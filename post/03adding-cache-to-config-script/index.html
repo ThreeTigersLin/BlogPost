@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>增加Cache到配置脚本 // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="增加Cache到配置脚本"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+增加Cache到配置脚本 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在之前我们作为开始的配置文件基础上，本章将过一遍更复杂的配置。我们将增加一个cache层次到系统，就像下图所示的一样。另外，本章内容将覆盖理解gem5的状态输出和增加命令行参数到脚本里。
+创建cache对象 我们将创建经典cache而不是ruby这章介绍的cache，因为现在我们正在模拟CPU系统，不将精力放在模拟cache 一致性上。我们将扩展出Cache SimObject，并配置到我们系统里。首先，我们必须理解在配置cache对象用到的参数。
+经典cache和Ruby gem5目前有两个完全独立的子系统用来模拟片上cache，“Classic cache”和“Ruby”。这个历史原因是gem5是由密歇根大学的M5项目和威斯康辛大学的GEMS项目合并而成。GEMS使用Ruby作为cache模拟工具，M5的代码库的cache模型称之为经典cache。这两种模型的区别在于Ruby用来模拟cache一致性细节。作为Ruby的重要部分是SLICC，一种领域定义语言用来定义cache一致性协议。另一方面，经典cache实现了一种简化的相对不灵活的MOESI cache一致性。
+具体使用哪种模型，您应该问下自己具体尝试模拟什么样的cache。如果模拟cache一致性协议的变化或者cache一致性协议是影响您的研究结果第一个要素，使用Ruby。另一方面，如果一致性协议对系统影响较小，使用经典cache。
+一个长期的目标是gem5统一这两种cache一致性模型到一个整体模型。
+Cache Cache SimObject声明可以在 src/mem/cache/Cache.py。这个python文件定义了您可以在SimObject设置的参数，当SimObject被这些参数例化后会传递到C&#43;&#43;实现的对象里。Cache SimObject从BaseCache继承过来，正如下文所示，
+在BaseCache类，有一些参数例如assoc是个整型的参数。一些参数，例如write_buffers 在这个例子有默认值8。默认参数通常是Param.*的第一个参数，除非第一个参数是个字符串。参数类的字符串参数是关于这个参数的描述（e.g.,tag_latency = Param.Cycles(&ldquo;Tag lookup latency&rdquo;）意味着这个tag_latency控制着“cache命中的延迟”。
+这些参数里很多都没有默认值，我们要求这些参数需要在调用m5.instantiat()之前设置好值。
+现在，使用特定的参数创建cache，我们将先在configs/tutorial下创建一个新文件，caches.py。第一步创建SimObject的关键地方是扩展这个文件。
+from m5.objects import Cache 接下来，我们能像其他Python类一样继承扩展BaseCache。我们能名字这个新类为我们想要的名字。让我们开始以L1 cache开始：
+class L1Cache(Cache): assoc = 2 tag_latency = 2 data_latency = 2 response_latency = 2 mshrs = 4 tgts_per_mshr = 20 这里，我们将设置一些不带有默认参数的BaseCache的参数。对于可能的配置选项，您可以在SimObject源代码寻找需要的选项。在这个例子，我们使用BaseCache。
+我们扩展BaseCache和设置大部分在BaseCache没有默认的参数。接下来，让我们开始两个L1Cache的子类，L1DCache和L1ICache
+class L1ICache(L1Cache): size = &#39;16kB&#39; class L1DCache(L1Cache): size = &#39;64kB&#39; 让我们也用一些合理的参数，创建L2 cache，"/>
+
+    <meta property="og:title" content="增加Cache到配置脚本" />
+<meta property="og:description" content="&#43;&#43;&#43;
+增加Cache到配置脚本 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在之前我们作为开始的配置文件基础上，本章将过一遍更复杂的配置。我们将增加一个cache层次到系统，就像下图所示的一样。另外，本章内容将覆盖理解gem5的状态输出和增加命令行参数到脚本里。
+创建cache对象 我们将创建经典cache而不是ruby这章介绍的cache，因为现在我们正在模拟CPU系统，不将精力放在模拟cache 一致性上。我们将扩展出Cache SimObject，并配置到我们系统里。首先，我们必须理解在配置cache对象用到的参数。
+经典cache和Ruby gem5目前有两个完全独立的子系统用来模拟片上cache，“Classic cache”和“Ruby”。这个历史原因是gem5是由密歇根大学的M5项目和威斯康辛大学的GEMS项目合并而成。GEMS使用Ruby作为cache模拟工具，M5的代码库的cache模型称之为经典cache。这两种模型的区别在于Ruby用来模拟cache一致性细节。作为Ruby的重要部分是SLICC，一种领域定义语言用来定义cache一致性协议。另一方面，经典cache实现了一种简化的相对不灵活的MOESI cache一致性。
+具体使用哪种模型，您应该问下自己具体尝试模拟什么样的cache。如果模拟cache一致性协议的变化或者cache一致性协议是影响您的研究结果第一个要素，使用Ruby。另一方面，如果一致性协议对系统影响较小，使用经典cache。
+一个长期的目标是gem5统一这两种cache一致性模型到一个整体模型。
+Cache Cache SimObject声明可以在 src/mem/cache/Cache.py。这个python文件定义了您可以在SimObject设置的参数，当SimObject被这些参数例化后会传递到C&#43;&#43;实现的对象里。Cache SimObject从BaseCache继承过来，正如下文所示，
+在BaseCache类，有一些参数例如assoc是个整型的参数。一些参数，例如write_buffers 在这个例子有默认值8。默认参数通常是Param.*的第一个参数，除非第一个参数是个字符串。参数类的字符串参数是关于这个参数的描述（e.g.,tag_latency = Param.Cycles(&ldquo;Tag lookup latency&rdquo;）意味着这个tag_latency控制着“cache命中的延迟”。
+这些参数里很多都没有默认值，我们要求这些参数需要在调用m5.instantiat()之前设置好值。
+现在，使用特定的参数创建cache，我们将先在configs/tutorial下创建一个新文件，caches.py。第一步创建SimObject的关键地方是扩展这个文件。
+from m5.objects import Cache 接下来，我们能像其他Python类一样继承扩展BaseCache。我们能名字这个新类为我们想要的名字。让我们开始以L1 cache开始：
+class L1Cache(Cache): assoc = 2 tag_latency = 2 data_latency = 2 response_latency = 2 mshrs = 4 tgts_per_mshr = 20 这里，我们将设置一些不带有默认参数的BaseCache的参数。对于可能的配置选项，您可以在SimObject源代码寻找需要的选项。在这个例子，我们使用BaseCache。
+我们扩展BaseCache和设置大部分在BaseCache没有默认的参数。接下来，让我们开始两个L1Cache的子类，L1DCache和L1ICache
+class L1ICache(L1Cache): size = &#39;16kB&#39; class L1DCache(L1Cache): size = &#39;64kB&#39; 让我们也用一些合理的参数，创建L2 cache，" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/03adding-cache-to-config-script/" />
+<meta property="article:published_time" content="2020-05-04T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-04T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">增加Cache到配置脚本</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 4, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          2 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<h1 id="增加cache到配置脚本">增加Cache到配置脚本</h1>
+<p><strong>作者:</strong> Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>在之前我们作为开始的配置文件基础上，本章将过一遍更复杂的配置。我们将增加一个cache层次到系统，就像下图所示的一样。另外，本章内容将覆盖理解gem5的状态输出和增加命令行参数到脚本里。</p>
+<p><img src="C:%5CUsers%5Clin%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200409203211360.png" alt="image-20200409203211360"></p>
+<h2 id="创建cache对象">创建cache对象</h2>
+<p>我们将创建经典cache而不是ruby这章介绍的cache，因为现在我们正在模拟CPU系统，不将精力放在模拟cache 一致性上。我们将扩展出Cache SimObject，并配置到我们系统里。首先，我们必须理解在配置cache对象用到的参数。</p>
+<h4 id="经典cache和ruby">经典cache和Ruby</h4>
+<p>gem5目前有两个完全独立的子系统用来模拟片上cache，“Classic cache”和“Ruby”。这个历史原因是gem5是由密歇根大学的M5项目和威斯康辛大学的GEMS项目合并而成。GEMS使用Ruby作为cache模拟工具，M5的代码库的cache模型称之为经典cache。这两种模型的区别在于Ruby用来模拟cache一致性细节。作为Ruby的重要部分是SLICC，一种领域定义语言用来定义cache一致性协议。另一方面，经典cache实现了一种简化的相对不灵活的MOESI cache一致性。</p>
+<p>具体使用哪种模型，您应该问下自己具体尝试模拟什么样的cache。如果模拟cache一致性协议的变化或者cache一致性协议是影响您的研究结果第一个要素，使用Ruby。另一方面，如果一致性协议对系统影响较小，使用经典cache。</p>
+<p>一个长期的目标是gem5统一这两种cache一致性模型到一个整体模型。</p>
+<h2 id="cache">Cache</h2>
+<p>Cache SimObject声明可以在 src/mem/cache/Cache.py。这个python文件定义了您可以在SimObject设置的参数，当SimObject被这些参数例化后会传递到C++实现的对象里。Cache SimObject从BaseCache继承过来，正如下文所示，</p>
+<p>在BaseCache类，有一些参数例如assoc是个整型的参数。一些参数，例如write_buffers 在这个例子有默认值8。默认参数通常是Param.*的第一个参数，除非第一个参数是个字符串。参数类的字符串参数是关于这个参数的描述（e.g.,tag_latency = Param.Cycles(&ldquo;Tag lookup latency&rdquo;）意味着这个tag_latency控制着“cache命中的延迟”。</p>
+<p>这些参数里很多都没有默认值，我们要求这些参数需要在调用m5.instantiat()之前设置好值。</p>
+<p>现在，使用特定的参数创建cache，我们将先在configs/tutorial下创建一个新文件，caches.py。第一步创建SimObject的关键地方是扩展这个文件。</p>
+<pre><code>from m5.objects import Cache
+</code></pre><p>接下来，我们能像其他Python类一样继承扩展BaseCache。我们能名字这个新类为我们想要的名字。让我们开始以L1 cache开始：</p>
+<pre><code>class L1Cache(Cache):
+    assoc = 2
+    tag_latency = 2
+    data_latency = 2
+    response_latency = 2
+    mshrs = 4
+    tgts_per_mshr = 20
+</code></pre><p>这里，我们将设置一些不带有默认参数的BaseCache的参数。对于可能的配置选项，您可以在SimObject源代码寻找需要的选项。在这个例子，我们使用BaseCache。</p>
+<p>我们扩展BaseCache和设置大部分在BaseCache没有默认的参数。接下来，让我们开始两个L1Cache的子类，L1DCache和L1ICache</p>
+<pre><code>class L1ICache(L1Cache):
+    size = '16kB'
+
+class L1DCache(L1Cache):
+    size = '64kB'
+</code></pre><p>让我们也用一些合理的参数，创建L2 cache，</p>
+<pre><code>class L2Cache(Cache):
+    size = '256kB'
+    assoc = 8
+    tag_latency = 20
+    data_latency = 20
+    response_latency = 20
+    mshrs = 20
+    tgts_per_mshr = 12
+</code></pre><p>现在我们指定了BaseCache必须的所有必要参数。下面我们要做的是例化我们的子类并且连接这些cache到互连上。尽管如此，连接许多对象到复杂的互连上能让配置文件快速增长，并且不可读。因此，让我们先增加一些有用的辅助函数到Cache的子类。记住，这些都是Python类，我们能做任何能用Python类能做的事情。</p>
+<p>对于L1 cache，让我们增加两个函数，connectCPU去连接CPU到cache，和connectBus连接cache到总线上。我们需要增加下面的代码到L1Cache类里。</p>
+<pre><code>def connectCPU(self, cpu):
+    # need to define this in a base class!
+    raise NotImplementedError
+
+def connectBus(self, bus):
+    self.mem_side = bus.slave
+</code></pre><p>接下来，我们为指令和数据cache定义单独的connectCPU函数，因为I-Cache和D-Cache有不同的名字。我们的L1ICache和L1DCache类如下：</p>
+<pre><code>class L1ICache(L1Cache):
+    size = '16kB'
+
+    def connectCPU(self, cpu):
+        self.cpu_side = cpu.icache_port
+
+class L1DCache(L1Cache):
+    size = '64kB'
+
+    def connectCPU(self, cpu):
+        self.cpu_side = cpu.dcache_port
+</code></pre><p>最后，让我们增加函数到L2Cache去连接内存侧和CPU侧总线。</p>
+<pre><code>def connectCPUSideBus(self, bus):
+    self.cpu_side = bus.master
+
+def connectMemSideBus(self, bus):
+    self.mem_side = bus.slave
+</code></pre><p>完整文件能在gem5/configs/learning_gem5/part1/caches.py找到.</p>
+<h2 id="增加cache到简单配置文件">增加cache到简单配置文件</h2>
+<p>现在，让我们增加我们刚创建的cache到我们在第一章创建的配置文件。</p>
+<p>首先，让我们复制这些脚本到一个新的文件名字。</p>
+<pre><code>cp ./configs/tutorial/simple.py ./configs/tutorial/two_level.py
+</code></pre><p>首先，我们需要导入cache.py定义的名字到命名空间。我们能增加下面的内容到文件头部（在m5.object import语句之后）。</p>
+<pre><code>from caches import *
+</code></pre><p>现在，在创建CPU之后，让我们创建L1cache：</p>
+<pre><code>system.cpu.icache = L1ICache()
+system.cpu.dcache = L1DCache()
+</code></pre><p>然后使用我们创建的帮助函数，连接cache到CPU端口。</p>
+<pre><code>system.cpu.icache.connectCPU(system.cpu)
+system.cpu.dcache.connectCPU(system.cpu)
+</code></pre><p>您需要移除之前连接cache port直接到内存总线的语句。使用下面两句替代。</p>
+<pre><code>system.cpu.icache_port = system.membus.slave
+system.cpu.dcache_port = system.membus.slave
+</code></pre><p>我们不能直接连接L1 cache到L2 cache，因为L2 cache仅能一个端口连接到它上面。因此，我们需要创建一个L2总线去连接L1 cache到L2 cache。我们能使用我们帮助函数连接L1 cache到L2 总线。</p>
+<pre><code>system.l2bus = L2XBar()
+
+system.cpu.icache.connectBus(system.l2bus)
+system.cpu.dcache.connectBus(system.l2bus)
+</code></pre><p>接下来，我们能创建我们的L2 cache和连接它到L2总线和内存总线。</p>
+<pre><code>system.l2cache = L2Cache()
+system.l2cache.connectCPUSideBus(system.l2bus)
+
+system.l2cache.connectMemSideBus(system.membus)
+</code></pre><p>文件剩下的内容保持不变，现在我们有一个二层cache完整的配置。如果您运行目前的文件，hello现在应该在58513000tick完成。源码在gem5/configs/learning_gem5/part1/two_level.py</p>
+<h2 id="在脚本里增加参数">在脚本里增加参数</h2>
+<p>当使用gem5进行实验时，您不需要每一次都编辑脚本文件。为了绕过这个，您可以增加命令行参数到gem5配置脚本。再一次，因为配置脚本使用的python语言，您可以使用支持参数扫描的Python库。从python2.5开始，pyoptparse已经被废弃，需要gem5源码自带的配置文件使用pyargparse替代。现在python至少要使用2.7版本，所有pyargparse是个比较好的选择用来写新脚本。如何开始使用pyoptparse，你能参数在线python文档。</p>
+<p>为了给我们两层cache增加选项，在导入cache python文件后，让我们增加一些选项。</p>
+<pre><code>from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option('--l1i_size', help=&quot;L1 instruction cache size&quot;)
+parser.add_option('--l1d_size', help=&quot;L1 data cache size&quot;)
+parser.add_option('--l2_size', help=&quot;Unified L2 cache size&quot;)
+
+(options, args) = parser.parse_args()
+</code></pre><p>现在，您可以运行build/X86/gem5.opt configs/tutorial/two_level.py &ndash;help会显示您增加的选项。</p>
+<p>接下来，我们需要传递这些选项到我们创建的配置文件的cache。我们将简单修改two_level.py将传递选项作为构造函数的参数到构造函数中。</p>
+<pre><code>system.cpu.icache = L1ICache(options)
+system.cpu.dcache = L1DCache(options)
+...
+system.l2cache = L2Cache(options)
+</code></pre><p>在cache.py，我们将增加构造函数（在python的_ _ init_ _ 函数）的每一个类。以L1 cache开始，我们将增加一个空的构造函数，因为我们没有参数要应用到L1 cache。但是，我们不要忘记了调用父类的构造函数。如果我们忽略调用父类的构造函数，gem5的SimObject属性将产生错误，当您尝试运行gem5在例化cache的时候，导致“RuntimeError: maximum recursion depth exceeded”。所以，在L1Cache，我们必须增加下面的类成员函数。</p>
+<pre><code>def __init__(self, options=None):
+    super(L1Cache, self).__init__()
+    pass
+</code></pre><p>接下来，在L1ICache，我们需要使用我们创建的选项(l1i_size)设置cache大小。在下面的代码，如果选项没有被传递到L1ICache构造函数，并且没有在命令行指定选项，在这个例子，我们将使用已经指定默认的大小。</p>
+<pre><code>def __init__(self, options=None):
+    super(L1ICache, self).__init__(options)
+    if not options or not options.l1i_size:
+        return
+    self.size = options.l1i_size
+</code></pre><p>我们能在L1DCache使用一样的代码：</p>
+<pre><code>def __init__(self, options=None):
+    super(L1DCache, self).__init__(options)
+    if not options or not options.l1d_size:
+        return
+    self.size = options.l1d_size
+</code></pre><p>和L2Cache：</p>
+<pre><code>def __init__(self, options=None):
+    super(L2Cache, self).__init__()
+    if not options or not options.l2_size:
+        return
+    self.size = options.l2_size
+</code></pre><p>带着这些变化，您现在可以从命令行传递cache大小到脚本。</p>
+<pre><code>build/X86/gem5.opt configs/tutorial/two_level.py --l2_size='1MB' --l1d_size='128kB'
+</code></pre><pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Sep  6 2015 14:17:02
+gem5 started Sep  6 2015 15:06:51
+gem5 executing on galapagos-09.cs.wisc.edu
+command line: build/X86/gem5.opt ../tutorial/_static/scripts/part1/two_level_opts.py --l2_size=1MB --l1d_size=128kB
+
+Global frequency set at 1000000000000 ticks per second
+warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (512 Mbytes)
+0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000
+Beginning simulation!
+info: Entering event queue @ 0.  Starting simulation...
+Hello world!
+Exiting @ tick 56742000 because target called exit()
+</code></pre><p>完整的脚本可以在gem5源代码中找到，gem5/configs/learning_gem5/part1/caches.py和gem5/configs/learning_gem5/part1/two_level.py</p>
+
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

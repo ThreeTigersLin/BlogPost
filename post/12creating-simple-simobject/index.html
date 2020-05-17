@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>创建一个简单的SimObject // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="创建一个简单的SimObject"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+创建一个简单的SimObject 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+大部分gem5的object都继承了SimObject这个类。SimObject导出了在gem5主要对象的公共接口。SimObject这个C&#43;&#43;对象被包装成可以从Python配置文件里进行访问的对象。
+SimObject能包含许多参数，这些参数能够被Python配置文件去设置。另外，像整数或者浮点数这些参数也可以作为SimObject参数。通过这种方式您可以创建一个复杂的像真实系统一样的系统层次结构。
+在本节，我们将过一遍创建一个“HelloWorld”SimObject。目的是像读者展示一个SimObject是如何被创建和所有SimObject类型对象的模板代码。我们将创建一个简单的Python配置文件例化该SimObject。
+在接下来的几个章节里，我们将扩展这个简单的SimObject包含debug支持、动态四件和增加参数。
+使用git分支 常见做法是使用git分支来开发gem5新特性。
+当想为gem5增加新特性或者修改某部分内容的时候，第一步是创建新分支来进行变更。创建git分支细节可以参考Git Book。
+git checkout -b hello-simobject 第一步：为新SimObject创建一个新的Python类 每一个SimObject有一个Python类和它关联。这个Python类描述了SimObject类的能用来被Python脚本控制的参数。对于例子的简单SimObject，我们先不用参数开始。尽管如此，我们简单需要为SimObject声明一个新类，并且设置它的名称和将用来定义对应C&#43;&#43;类的C&#43;&#43;头文件。
+我们在src/learning_gem5目录下创建HelloObject.py的文件。
+from m5.params import * from m5.SimObject import SimObject class HelloObject(SimObject): type = &#39;HelloObject&#39; cxx_header = &#34;learning_gem5/hello_object.hh&#34; 不要求type成员的值和类的名称一样，但是如果一样的话更方便理解。type成员是包装这个Python SimObject的C&#43;&#43;类名。仅当特殊的环境type成员和类名不一样。
+cxx_header成员是包含对应的C&#43;&#43;类声明的头文件名。为了方便文件名使用类名对应的小写单词，尽管您可以使用任意名字。
+第二步：用C&#43;&#43;实现SimObject 接下来我们开始创建hello_object.hh和hello_object.cc。
+我们以C&#43;&#43;头文件开始，为了方便，gem5包装所有的头文件用文件名的#ifndef/#endif宏来避免重复包含。
+在这头文件里，我们只要做的事情是声明我们的类。既然HelloObject是一个SimObject，它必须继承C&#43;&#43; SimObject类。大部分时间，您SimObject应该是SimObject的一个子类而不是它SimObject自身。
+SimObject包含了很多虚函数。尽管如此，这些虚函数没有一个纯虚函数，所以最简单的情况，除了构造函数外不需要实现任何其他函数。
+所有的SimObject认为它的构造函数有一个参数，这个参数对象是构建系统时自动创建的并且基于我们在上面的python类定义的参数去传递。这个参数类型的名字是由python定义的类名自动生成的。对于我们的“HelloObject”，参数类型名是“HelloObjectParams”
+对于我们例子里简单的头文件需要的代码如下：
+#ifndef __LEARNING_GEM5_HELLO_OBJECT_HH__ #define __LEARNING_GEM5_HELLO_OBJECT_HH__  #include &#34;params/HelloObject.hh&#34;#include &#34;sim/sim_object.hh&#34; class HelloObject : public SimObject { public: HelloObject(HelloObjectParams *p); }; #endif // __LEARNING_GEM5_HELLO_OBJECT_HH__ 接下来，我们需要在."/>
+
+    <meta property="og:title" content="创建一个简单的SimObject" />
+<meta property="og:description" content="&#43;&#43;&#43;
+创建一个简单的SimObject 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+大部分gem5的object都继承了SimObject这个类。SimObject导出了在gem5主要对象的公共接口。SimObject这个C&#43;&#43;对象被包装成可以从Python配置文件里进行访问的对象。
+SimObject能包含许多参数，这些参数能够被Python配置文件去设置。另外，像整数或者浮点数这些参数也可以作为SimObject参数。通过这种方式您可以创建一个复杂的像真实系统一样的系统层次结构。
+在本节，我们将过一遍创建一个“HelloWorld”SimObject。目的是像读者展示一个SimObject是如何被创建和所有SimObject类型对象的模板代码。我们将创建一个简单的Python配置文件例化该SimObject。
+在接下来的几个章节里，我们将扩展这个简单的SimObject包含debug支持、动态四件和增加参数。
+使用git分支 常见做法是使用git分支来开发gem5新特性。
+当想为gem5增加新特性或者修改某部分内容的时候，第一步是创建新分支来进行变更。创建git分支细节可以参考Git Book。
+git checkout -b hello-simobject 第一步：为新SimObject创建一个新的Python类 每一个SimObject有一个Python类和它关联。这个Python类描述了SimObject类的能用来被Python脚本控制的参数。对于例子的简单SimObject，我们先不用参数开始。尽管如此，我们简单需要为SimObject声明一个新类，并且设置它的名称和将用来定义对应C&#43;&#43;类的C&#43;&#43;头文件。
+我们在src/learning_gem5目录下创建HelloObject.py的文件。
+from m5.params import * from m5.SimObject import SimObject class HelloObject(SimObject): type = &#39;HelloObject&#39; cxx_header = &#34;learning_gem5/hello_object.hh&#34; 不要求type成员的值和类的名称一样，但是如果一样的话更方便理解。type成员是包装这个Python SimObject的C&#43;&#43;类名。仅当特殊的环境type成员和类名不一样。
+cxx_header成员是包含对应的C&#43;&#43;类声明的头文件名。为了方便文件名使用类名对应的小写单词，尽管您可以使用任意名字。
+第二步：用C&#43;&#43;实现SimObject 接下来我们开始创建hello_object.hh和hello_object.cc。
+我们以C&#43;&#43;头文件开始，为了方便，gem5包装所有的头文件用文件名的#ifndef/#endif宏来避免重复包含。
+在这头文件里，我们只要做的事情是声明我们的类。既然HelloObject是一个SimObject，它必须继承C&#43;&#43; SimObject类。大部分时间，您SimObject应该是SimObject的一个子类而不是它SimObject自身。
+SimObject包含了很多虚函数。尽管如此，这些虚函数没有一个纯虚函数，所以最简单的情况，除了构造函数外不需要实现任何其他函数。
+所有的SimObject认为它的构造函数有一个参数，这个参数对象是构建系统时自动创建的并且基于我们在上面的python类定义的参数去传递。这个参数类型的名字是由python定义的类名自动生成的。对于我们的“HelloObject”，参数类型名是“HelloObjectParams”
+对于我们例子里简单的头文件需要的代码如下：
+#ifndef __LEARNING_GEM5_HELLO_OBJECT_HH__ #define __LEARNING_GEM5_HELLO_OBJECT_HH__  #include &#34;params/HelloObject.hh&#34;#include &#34;sim/sim_object.hh&#34; class HelloObject : public SimObject { public: HelloObject(HelloObjectParams *p); }; #endif // __LEARNING_GEM5_HELLO_OBJECT_HH__ 接下来，我们需要在." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/12creating-simple-simobject/" />
+<meta property="article:published_time" content="2020-05-07T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-07T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">创建一个简单的SimObject</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 7, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          2 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<h1 id="创建一个简单的simobject">创建一个简单的SimObject</h1>
+<p><strong>作者:</strong>  Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>大部分gem5的object都继承了SimObject这个类。SimObject导出了在gem5主要对象的公共接口。SimObject这个C++对象被包装成可以从Python配置文件里进行访问的对象。</p>
+<p>SimObject能包含许多参数，这些参数能够被Python配置文件去设置。另外，像整数或者浮点数这些参数也可以作为SimObject参数。通过这种方式您可以创建一个复杂的像真实系统一样的系统层次结构。</p>
+<p>在本节，我们将过一遍创建一个“HelloWorld”SimObject。目的是像读者展示一个SimObject是如何被创建和所有SimObject类型对象的模板代码。我们将创建一个简单的Python配置文件例化该SimObject。</p>
+<p>在接下来的几个章节里，我们将扩展这个简单的SimObject包含debug支持、动态四件和增加参数。</p>
+<h4 id="使用git分支">使用git分支</h4>
+<p>常见做法是使用git分支来开发gem5新特性。</p>
+<p>当想为gem5增加新特性或者修改某部分内容的时候，第一步是创建新分支来进行变更。创建git分支细节可以参考Git Book。</p>
+<pre><code>git checkout -b hello-simobject
+</code></pre><h2 id="第一步为新simobject创建一个新的python类">第一步：为新SimObject创建一个新的Python类</h2>
+<p>每一个SimObject有一个Python类和它关联。这个Python类描述了SimObject类的能用来被Python脚本控制的参数。对于例子的简单SimObject，我们先不用参数开始。尽管如此，我们简单需要为SimObject声明一个新类，并且设置它的名称和将用来定义对应C++类的C++头文件。</p>
+<p>我们在src/learning_gem5目录下创建HelloObject.py的文件。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">from</span> m5.params <span style="color:#f92672">import</span> <span style="color:#f92672">*</span>
+<span style="color:#f92672">from</span> m5.SimObject <span style="color:#f92672">import</span> SimObject
+
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">HelloObject</span>(SimObject):
+    type <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;HelloObject&#39;</span>
+    cxx_header <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;learning_gem5/hello_object.hh&#34;</span>
+</code></pre></div><p>不要求type成员的值和类的名称一样，但是如果一样的话更方便理解。type成员是包装这个Python SimObject的C++类名。仅当特殊的环境type成员和类名不一样。</p>
+<p>cxx_header成员是包含对应的C++类声明的头文件名。为了方便文件名使用类名对应的小写单词，尽管您可以使用任意名字。</p>
+<h2 id="第二步用c实现simobject">第二步：用C++实现SimObject</h2>
+<p>接下来我们开始创建hello_object.hh和hello_object.cc。</p>
+<p>我们以C++头文件开始，为了方便，gem5包装所有的头文件用文件名的#ifndef/#endif宏来避免重复包含。</p>
+<p>在这头文件里，我们只要做的事情是声明我们的类。既然HelloObject是一个SimObject，它必须继承C++ SimObject类。大部分时间，您SimObject应该是SimObject的一个子类而不是它SimObject自身。</p>
+<p>SimObject包含了很多虚函数。尽管如此，这些虚函数没有一个纯虚函数，所以最简单的情况，除了构造函数外不需要实现任何其他函数。</p>
+<p>所有的SimObject认为它的构造函数有一个参数，这个参数对象是构建系统时自动创建的并且基于我们在上面的python类定义的参数去传递。这个参数类型的名字是由python定义的类名自动生成的。对于我们的“HelloObject”，参数类型名是“HelloObjectParams”</p>
+<p>对于我们例子里简单的头文件需要的代码如下：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#75715e">#ifndef __LEARNING_GEM5_HELLO_OBJECT_HH__
+</span><span style="color:#75715e">#define __LEARNING_GEM5_HELLO_OBJECT_HH__
+</span><span style="color:#75715e"></span>
+<span style="color:#75715e">#include</span> <span style="color:#75715e">&#34;params/HelloObject.hh&#34;</span><span style="color:#75715e">
+</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&#34;sim/sim_object.hh&#34;</span><span style="color:#75715e">
+</span><span style="color:#75715e"></span>
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">HelloObject</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> SimObject
+{
+  <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+    HelloObject(HelloObjectParams <span style="color:#f92672">*</span>p);
+};
+
+<span style="color:#75715e">#endif </span><span style="color:#75715e">// __LEARNING_GEM5_HELLO_OBJECT_HH__
+</span></code></pre></div><p>接下来，我们需要在.cc文件里实现<em>两个</em>函数，而不是一个。第一函数，是HelloObject的构造函数。这里我们只是简单传递参数对象给SimObject父对象，并且打印出“Hello world！”</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#75715e">#include</span> <span style="color:#75715e">&#34;learning_gem5/hello_object.hh&#34;</span><span style="color:#75715e">
+</span><span style="color:#75715e"></span>
+<span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;iostream&gt;</span><span style="color:#75715e">
+</span><span style="color:#75715e"></span>
+HelloObject<span style="color:#f92672">::</span>HelloObject(HelloObjectParams <span style="color:#f92672">*</span>params) <span style="color:#f92672">:</span>
+    SimObject(params)
+{
+    std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;Hello World! From a SimObject!&#34;</span> <span style="color:#f92672">&lt;&lt;</span> std<span style="color:#f92672">::</span>endl;
+}
+</code></pre></div><p>通常来说，不应该在gem5里使用std::cout。而应该使用debug flag。在下一章，我们将修改这个构造函数使用debug flag。在这个简单用例里我们还是先使用std::cout来演示。</p>
+<p>另外我们还需要实现一个为SimObject实现的函数。我们必须为参数类显式实现一个从SimObject Python说明过来的函数，名字叫create函数。这个函数简单返回新的SimObject实例。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++">HelloObject<span style="color:#f92672">*</span>
+HelloObjectParams<span style="color:#f92672">::</span>create()
+{
+    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">HelloObject</span>(<span style="color:#66d9ef">this</span>);
+}
+</code></pre></div><p>如果您忘记增加这个create函数，链接的时候将会有错误信息，类似下面内容：</p>
+<pre><code>build/X86/python/m5/internal/param_HelloObject_wrap.o: In function `_wrap_HelloObjectParams_create':
+/local.chinook/gem5/gem5-tutorial/gem5/build/X86/python/m5/internal/param_HelloObject_wrap.cc:3096: undefined reference to `HelloObjectParams::create()'
+collect2: error: ld returned 1 exit status
+scons: *** [build/X86/gem5.opt] Error 1
+scons: building terminated because of errors.
+</code></pre><p>这里的undefined reference to `HelloObjectParams::create()显示您需要为SimObject实现一个create函数。</p>
+<h2 id="第三步注册simobject和c文件">第三步：注册SimObject和C++文件</h2>
+<p>为了C++文件能够被编译和python文件被传递，我们必须告诉构建系统这几个文件。gem5使用SCons作为构建系统，所以您可以简单在新SimObject所在的目录下创建一个SCons脚本文件，如果已经有了SCons脚本文件，可以简单地在后面增加那几个文件的声明语句。</p>
+<p>在SCons脚本，当被import之后，有一系列的函数可以使用，具体可以查看相关章节。</p>
+<p>为了新的SimObject能够被编译，您需要在src/learning_gem5下创建一个名字为“SConscript”的新文件，在这个文件里，声明这个SimObject和.cc文件，如下面所示：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">Import(<span style="color:#e6db74">&#39;*&#39;</span>)
+
+SimObject(<span style="color:#e6db74">&#39;HelloObject.py&#39;</span>)
+Source(<span style="color:#e6db74">&#39;hello_object.cc&#39;</span>)
+</code></pre></div><h2 id="第四步编译gem5">第四步：编译gem5</h2>
+<p>为了编译和链接新的文件，必须重新编译gem5，下面是使用X86 ISA的例子，但本例子不依赖具体的ISA，因此其他gem5的ISA也能够使用。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">scons build/X86/gem5.opt
+</code></pre></div><h2 id="第五步创建配置脚本使用新simobject">第五步：创建配置脚本使用新SimObject</h2>
+<p>现在您已经实现了一个SimObject，并且已经编译到gem5里了，您需要创建一个Python配置文件去实例化一个对象。因为本例子SimObject比较简单，system对象不是必须的，CPU对象也不需要，cache对象也不需要，只需要一个Root对象。所有的gem5对象实例需要一个Root对象。</p>
+<p>下面简单过一遍配置文件，首先import m5和所有的已编译的对象。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">import</span> m5
+<span style="color:#f92672">from</span> m5.objects <span style="color:#f92672">import</span> <span style="color:#f92672">*</span>
+</code></pre></div><p>接下来，您需要实力一个Root对象，每个gem5实例都需要该对象。</p>
+<pre><code>root = Root(full_system = False)
+</code></pre><p>现在，可以例化HelloObject，您需要做的只是调用Python的构造函数。后面我们会展示怎么通过python构造函数指定参数。另外，该对象在本例子中需要作为Root对象的一个子对象，仅当SimObject为Root对象的子对象才会创建对应的C++对象实例。</p>
+<pre><code>root.hello = HelloObject()
+</code></pre><p>最后，需要调用m5模块的instantiate函数来实际运行仿真。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">m5<span style="color:#f92672">.</span>instantiate()
+
+<span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#34;Beginning simulation!&#34;</span>)
+exit_event <span style="color:#f92672">=</span> m5<span style="color:#f92672">.</span>simulate()
+<span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;Exiting @ tick {} because {}&#39;</span>
+      <span style="color:#f92672">.</span>format(m5<span style="color:#f92672">.</span>curTick(), exit_event<span style="color:#f92672">.</span>getCause()))
+</code></pre></div><p>输出类型下面的东西：</p>
+<pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled May  4 2016 11:37:41
+gem5 started May  4 2016 11:44:28
+gem5 executing on mustardseed.cs.wisc.edu, pid 22480
+command line: build/X86/gem5.opt configs/learning_gem5/run_hello.py
+
+Global frequency set at 1000000000000 ticks per second
+Hello World! From a SimObject!
+Beginning simulation!
+info: Entering event queue @ 0.  Starting simulation...
+Exiting @ tick 18446744073709551615 because simulate() limit reached
+
+Congrats! You have written your first 
+</code></pre><p>祝贺，您已经完成了第一个SimObject，在接下来的章节中，我们将拓展这个SimObject 并且探索能使用SimObject能做些什么东西。</p>
+
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

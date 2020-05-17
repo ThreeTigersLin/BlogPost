@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>理解gem5的输入和输出 // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="理解gem5的输入和输出"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+理解gem5的输入和输出 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+除了您仿真脚本的输出外，运行完gem5后，会在m5out的目录下生成3个文件。
+config.ini 包含了仿真用到的每一个SimObject和它的仿真参数。
+config.json 和config.ini一样，但是是json格式。
+stats.txt 所有的注册到仿真器的gem5状态的展示。
+config.ini 这个文件是被仿真系统的确切的配置。每一个SimObject的所有参数，无论是否在python配置脚本里设置或者默认值都会在这个文件列出。
+下面是从一个simple.py配置文件运行后抓取的config.ini。
+[root] type=Root children=system eventq_index=0 full_system=false sim_quantum=0 time_sync_enable=false time_sync_period=100000000000 time_sync_spin_threshold=100000000 [system] type=System children=clk_domain cpu dvfs_handler mem_ctrl membus boot_osflags=a cache_line_size=64 clk_domain=system.clk_domain default_p_state=UNDEFINED eventq_index=0 exit_on_work_items=false init_param=0 kernel= kernel_addr_check=true kernel_extras= kvm_vm=Null load_addr_mask=18446744073709551615 load_offset=0 mem_mode=timing ... [system.membus] type=CoherentXBar children=snoop_filter clk_domain=system.clk_domain default_p_state=UNDEFINED eventq_index=0 forward_latency=4 frontend_latency=3 p_state_clk_gate_bins=20 p_state_clk_gate_max=1000000000000 p_state_clk_gate_min=1000 point_of_coherency=true point_of_unification=true power_model= response_latency=2 snoop_filter=system.membus.snoop_filter snoop_response_latency=4 system=system use_default_range=false width=16 master=system.cpu.interrupts.pio system."/>
+
+    <meta property="og:title" content="理解gem5的输入和输出" />
+<meta property="og:description" content="&#43;&#43;&#43;
+理解gem5的输入和输出 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+除了您仿真脚本的输出外，运行完gem5后，会在m5out的目录下生成3个文件。
+config.ini 包含了仿真用到的每一个SimObject和它的仿真参数。
+config.json 和config.ini一样，但是是json格式。
+stats.txt 所有的注册到仿真器的gem5状态的展示。
+config.ini 这个文件是被仿真系统的确切的配置。每一个SimObject的所有参数，无论是否在python配置脚本里设置或者默认值都会在这个文件列出。
+下面是从一个simple.py配置文件运行后抓取的config.ini。
+[root] type=Root children=system eventq_index=0 full_system=false sim_quantum=0 time_sync_enable=false time_sync_period=100000000000 time_sync_spin_threshold=100000000 [system] type=System children=clk_domain cpu dvfs_handler mem_ctrl membus boot_osflags=a cache_line_size=64 clk_domain=system.clk_domain default_p_state=UNDEFINED eventq_index=0 exit_on_work_items=false init_param=0 kernel= kernel_addr_check=true kernel_extras= kvm_vm=Null load_addr_mask=18446744073709551615 load_offset=0 mem_mode=timing ... [system.membus] type=CoherentXBar children=snoop_filter clk_domain=system.clk_domain default_p_state=UNDEFINED eventq_index=0 forward_latency=4 frontend_latency=3 p_state_clk_gate_bins=20 p_state_clk_gate_max=1000000000000 p_state_clk_gate_min=1000 point_of_coherency=true point_of_unification=true power_model= response_latency=2 snoop_filter=system.membus.snoop_filter snoop_response_latency=4 system=system use_default_range=false width=16 master=system.cpu.interrupts.pio system." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/04understand-gem5-staticis-and-output/" />
+<meta property="article:published_time" content="2020-05-05T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-05T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">理解gem5的输入和输出</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 5, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          4 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<h1 id="理解gem5的输入和输出">理解gem5的输入和输出</h1>
+<p><strong>作者:</strong>  Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>除了您仿真脚本的输出外，运行完gem5后，会在m5out的目录下生成3个文件。</p>
+<h4 id="configini">config.ini</h4>
+<p>包含了仿真用到的每一个SimObject和它的仿真参数。</p>
+<h4 id="configjson">config.json</h4>
+<p>和config.ini一样，但是是json格式。</p>
+<h4 id="statstxt">stats.txt</h4>
+<p>所有的注册到仿真器的gem5状态的展示。</p>
+<h2 id="configini-1">config.ini</h2>
+<p>这个文件是被仿真系统的确切的配置。每一个SimObject的所有参数，无论是否在python配置脚本里设置或者默认值都会在这个文件列出。</p>
+<p>下面是从一个simple.py配置文件运行后抓取的config.ini。</p>
+<pre><code>[root]
+type=Root
+children=system
+eventq_index=0
+full_system=false
+sim_quantum=0
+time_sync_enable=false
+time_sync_period=100000000000
+time_sync_spin_threshold=100000000
+
+[system]
+type=System
+children=clk_domain cpu dvfs_handler mem_ctrl membus
+boot_osflags=a
+cache_line_size=64
+clk_domain=system.clk_domain
+default_p_state=UNDEFINED
+eventq_index=0
+exit_on_work_items=false
+init_param=0
+kernel=
+kernel_addr_check=true
+kernel_extras=
+kvm_vm=Null
+load_addr_mask=18446744073709551615
+load_offset=0
+mem_mode=timing
+
+...
+
+[system.membus]
+type=CoherentXBar
+children=snoop_filter
+clk_domain=system.clk_domain
+default_p_state=UNDEFINED
+eventq_index=0
+forward_latency=4
+frontend_latency=3
+p_state_clk_gate_bins=20
+p_state_clk_gate_max=1000000000000
+p_state_clk_gate_min=1000
+point_of_coherency=true
+point_of_unification=true
+power_model=
+response_latency=2
+snoop_filter=system.membus.snoop_filter
+snoop_response_latency=4
+system=system
+use_default_range=false
+width=16
+master=system.cpu.interrupts.pio system.cpu.interrupts.int_slave system.mem_ctrl.port
+slave=system.cpu.icache_port system.cpu.dcache_port system.cpu.interrupts.int_master system.system_port
+
+[system.membus.snoop_filter]
+type=SnoopFilter
+eventq_index=0
+lookup_latency=1
+max_capacity=8388608
+system=system
+</code></pre><p>这里我们能发现在每一个SimObject开始的地方都是以它在python配置文件创建时的名字开头。然后被中括号包围（例如,[system.membus]）。</p>
+<p>接下来，SImObject的每一个参数和它的值被列出来，包含了没有在python配置文件里显式赋值的参数。例如，配置文件里设置clock为1GHz，但是python配置文件不包含cache line size（在系统中是64字节）。</p>
+<p>config.ini文件是一个很有用的工具，它能保证仿真确实是在您希望的仿真条件下进行。因为在gem5有很多方式设置和覆盖默认值的地方。最好的实践就是总是检验在python配置文件中设置的值被正确传递到实践C++SimObject实例里。</p>
+<h4 id="statstxt-1">stats.txt</h4>
+<p>gem5有很灵活的状态生成系统。在gem5的wiki网站上有详细地覆盖gem5状态。每一个SimObject实例有他自身的状态。在仿真的末尾，或者特殊的状态转储命令下，目前的所有SimObject的状态都会被转储到一个文件中。</p>
+<p>首先，状态文件包含执行时通用的状态。&mdash;&mdash;&mdash;- Begin Simulation Statistics &mdash;&mdash;&mdash;-开始表示状态的导出。有可能在一个文件里面有多个这样的语句，如果在执行gem5有多次状态导出操作的话。这个在长时间执行或者从checkpoint恢复时比较常见。</p>
+<pre><code>---------- Begin Simulation Statistics ----------
+sim_seconds                                  0.000346                       # Number of seconds simulated
+sim_ticks                                   345518000                       # Number of ticks simulated
+final_tick                                  345518000                       # Number of ticks from beginning of simulation (restored from checkpoints and never reset)
+sim_freq                                 1000000000000                       # Frequency of simulated ticks
+host_inst_rate                                 144400                       # Simulator instruction rate (inst/s)
+host_op_rate                                   260550                       # Simulator op (including micro ops) rate (op/s)
+host_tick_rate                             8718625183                       # Simulator tick rate (ticks/s)
+host_mem_usage                                 778640                       # Number of bytes of host memory used
+host_seconds                                     0.04                       # Real time elapsed on the host
+sim_insts                                        5712                       # Number of instructions simulated
+sim_ops                                         10314                       # Number of ops (including micro ops) simulated
+</code></pre><p>每个状态包含一个名字（首列），一个值（第二列），和一个描述（最后一列，从#号开始）。</p>
+<p>大多数的状态都是能够自解释的。一些很重要状态是，sim_seconds，是仿真执行的总时间，sim_insts是CPU提交的指令数量，和host_inst_rate能反应gem5执行时的性能。</p>
+<p>接下来是，SimObject状态的打印。例如，内存控制器状态，包含了每一个组件读取的字节数，每个组件的平均带宽等。</p>
+<pre><code>system.clk_domain.voltage_domain.voltage            1                       # Voltage in Volts
+system.clk_domain.clock                          1000                       # Clock period in ticks
+system.mem_ctrl.pwrStateResidencyTicks::UNDEFINED    507841000                       # Cumulative time (in ticks) in various power states
+system.mem_ctrl.bytes_read::cpu.inst            58264                       # Number of bytes read from this memory
+system.mem_ctrl.bytes_read::cpu.data             7167                       # Number of bytes read from this memory
+system.mem_ctrl.bytes_read::total               65431                       # Number of bytes read from this memory
+system.mem_ctrl.bytes_inst_read::cpu.inst        58264                       # Number of instructions bytes read from this memory
+system.mem_ctrl.bytes_inst_read::total          58264                       # Number of instructions bytes read from this memory
+system.mem_ctrl.bytes_written::cpu.data          7160                       # Number of bytes written to this memory
+system.mem_ctrl.bytes_written::total             7160                       # Number of bytes written to this memory
+system.mem_ctrl.num_reads::cpu.inst              7283                       # Number of read requests responded to by this memory
+system.mem_ctrl.num_reads::cpu.data              1084                       # Number of read requests responded to by this memory
+system.mem_ctrl.num_reads::total                 8367                       # Number of read requests responded to by this memory
+system.mem_ctrl.num_writes::cpu.data              941                       # Number of write requests responded to by this memory
+system.mem_ctrl.num_writes::total                 941                       # Number of write requests responded to by this memory
+system.mem_ctrl.bw_read::cpu.inst           114728823                       # Total read bandwidth from this memory (bytes/s)
+system.mem_ctrl.bw_read::cpu.data            14112685                       # Total read bandwidth from this memory (bytes/s)
+system.mem_ctrl.bw_read::total              128841507                       # Total read bandwidth from this memory (bytes/s)
+system.mem_ctrl.bw_inst_read::cpu.inst      114728823                       # Instruction read bandwidth from this memory (bytes/s)
+system.mem_ctrl.bw_inst_read::total         114728823                       # Instruction read bandwidth from this memory (bytes/s)
+system.mem_ctrl.bw_write::cpu.data           14098901                       # Write bandwidth from this memory (bytes/s)
+system.mem_ctrl.bw_write::total              14098901                       # Write bandwidth from this memory (bytes/s)
+system.mem_ctrl.bw_total::cpu.inst          114728823                       # Total bandwidth to/from this memory (bytes/s)
+system.mem_ctrl.bw_total::cpu.data           28211586                       # Total bandwidth to/from this memory (bytes/s)
+system.mem_ctrl.bw_total::total             142940409                       # Total bandwidth to/from this memory (bytes/s)
+</code></pre><p>接下来是CPU状态，包含了syscall的次数、分支预测次数、提交的指令数，等信息。</p>
+<pre><code>system.cpu.dtb.walker.pwrStateResidencyTicks::UNDEFINED    507841000                       # Cumulative time (in ticks) in various power states
+system.cpu.dtb.rdAccesses                        1084                       # TLB accesses on read requests
+system.cpu.dtb.wrAccesses                         941                       # TLB accesses on write requests
+system.cpu.dtb.rdMisses                             9                       # TLB misses on read requests
+system.cpu.dtb.wrMisses                             7                       # TLB misses on write requests
+system.cpu.apic_clk_domain.clock                16000                       # Clock period in ticks
+system.cpu.interrupts.pwrStateResidencyTicks::UNDEFINED    507841000                       # Cumulative time (in ticks) in various power states
+system.cpu.itb.walker.pwrStateResidencyTicks::UNDEFINED    507841000                       # Cumulative time (in ticks) in various power states
+system.cpu.itb.rdAccesses                           0                       # TLB accesses on read requests
+system.cpu.itb.wrAccesses                        7284                       # TLB accesses on write requests
+system.cpu.itb.rdMisses                             0                       # TLB misses on read requests
+system.cpu.itb.wrMisses                            31                       # TLB misses on write requests
+system.cpu.workload.numSyscalls                    11                       # Number of system calls
+system.cpu.pwrStateResidencyTicks::ON       507841000                       # Cumulative time (in ticks) in various power states
+system.cpu.numCycles                           507841                       # number of cpu cycles simulated
+system.cpu.numWorkItemsStarted                      0                       # number of work items this cpu started
+system.cpu.numWorkItemsCompleted                    0                       # number of work items this cpu completed
+system.cpu.committedInsts                        5712                       # Number of instructions committed
+system.cpu.committedOps                         10313                       # Number of ops (including micro ops) committed
+system.cpu.num_int_alu_accesses                 10204                       # Number of integer alu accesses
+system.cpu.num_fp_alu_accesses                      0                       # Number of float alu accesses
+system.cpu.num_vec_alu_accesses                     0                       # Number of vector alu accesses
+system.cpu.num_func_calls                         221                       # number of times a function call or return occured
+system.cpu.num_conditional_control_insts          986                       # number of instructions that are conditional controls
+system.cpu.num_int_insts                        10204                       # number of integer instructions
+system.cpu.num_fp_insts                             0                       # number of float instructions
+system.cpu.num_vec_insts                            0                       # number of vector instructions
+system.cpu.num_int_register_reads               19293                       # number of times the integer registers were read
+system.cpu.num_int_register_writes               7976                       # number of times the integer registers were written
+system.cpu.num_fp_register_reads                    0                       # number of times the floating registers were read
+system.cpu.num_fp_register_writes                   0                       # number of times the floating registers were written
+system.cpu.num_vec_register_reads                   0                       # number of times the vector registers were read
+system.cpu.num_vec_register_writes                  0                       # number of times the vector registers were written
+system.cpu.num_cc_register_reads                 7020                       # number of times the CC registers were read
+system.cpu.num_cc_register_writes                3825                       # number of times the CC registers were written
+system.cpu.num_mem_refs                          2025                       # number of memory refs
+system.cpu.num_load_insts                        1084                       # Number of load instructions
+system.cpu.num_store_insts                        941                       # Number of store instructions
+system.cpu.num_idle_cycles                          0                       # Number of idle cycles
+system.cpu.num_busy_cycles                     507841                       # Number of busy cycles
+system.cpu.not_idle_fraction                        1                       # Percentage of non-idle cycles
+system.cpu.idle_fraction                            0                       # Percentage of idle cycles
+system.cpu.Branches  
+</code></pre>
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

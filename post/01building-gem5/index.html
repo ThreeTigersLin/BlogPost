@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>构建 gem5 // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="构建 gem5"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+构建gem5 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+本章内容覆盖了怎样搭建gem5开发环境和构建gem5的细节
+gem5 环境要求 可以阅读[gem5依赖]获取更多细节。
+在Ubuntu系统，您能通过下面的命令行安装依赖:
+sudo apt install build-essential git m4 scons zlib1g zlib1g-dev libprotobuf-dev protobuf-compiler libprotoc-dev libgoogle-perftools-dev python-dev python  git： gcc 4.8&#43; scons python 2.7&#43; protobuf 2.1&#43; boost（可选）  获取源代码 更换到您想下载gem5源码的目录，然后使用git clone 命令克隆源码仓库：
+git clone https://gem5.googlesource.com/public/gem5 现在您可以更换到包含gem5源码的gem目录了。
+第一次构建gem5 让我们开始构建一个基础的x86系统。
+目前，您必须首先为各个想要模拟的ISA的gem5程序单独进行编译。另外，如果使用ruby（见ruby介绍这一章），您还得单独为每个缓存一致性协议（cache conherence protocol）单独进行编译。
+为了编译gem5，需要使用SCons。Scons使用SConstruct文件（gem5/SConstruct）去搭建一系列的变量然后使用每个源码子目录下的Scons脚本去寻找和编译gem5源码。
+SCons第一次运行的时候，会自动创建gem5/build目录。在这个目录下您能够看到SCons生成的文件。另外有为不同选型生成的各自独立的目录用来编译gem5源码（ISA和缓存一致性协议）
+有许多默认的编译选项在build_opts目录下。这些文件指定了传递给SCon各种参数去构建gem5。我们使用默认的x86参数，并指定编译所有的CPU模型。您能够在build_opts/x86查看这些传递给SCons的默认值。您也可以通过命令行去覆盖这些指定选项的默认值。
+scons build/X86/gem5.opt -j9 gem5 二进制类型 在gem5里的SCons脚本目前支持5种不同的二进制类型的gem5的构建。这些类型基本上都可以从名字看出各自的含义，下文还是解释下细节：
+debug 编译时没有使用优化选项并且包含debug符号。这种二进制类型对使用调试器调试和优化一些gem5的选项十分有用。运行这种类型的程序相对其他类型要慢一些。
+opt 编译时使用了大部分优化参数（例如：-O3），但是也包含了调试符号。这种二进制程序比debug运行的速度要快，同时又有足够的调试信息用来调试大部分问题。
+fast 编译时用了所有的优化参数（包括在特定平台上链接时间优化）和没有debug符号。另外，所有的assert也被移除，但是panic和fatal还是包含的。fast模式是最快速的二进制类型，并且文件大小也比opt模式小很多。尽管如此，fast模式还是您觉得代码没有大的bug的时候使用。
+prof和perf 这两种模式的二进制类型用来获取gem5指标概要。prof模式包含GNU profiler（gprof）概要信息，perf模式包含Google 性能工具（gperftools）概要信息。"/>
+
+    <meta property="og:title" content="构建 gem5" />
+<meta property="og:description" content="&#43;&#43;&#43;
+构建gem5 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+本章内容覆盖了怎样搭建gem5开发环境和构建gem5的细节
+gem5 环境要求 可以阅读[gem5依赖]获取更多细节。
+在Ubuntu系统，您能通过下面的命令行安装依赖:
+sudo apt install build-essential git m4 scons zlib1g zlib1g-dev libprotobuf-dev protobuf-compiler libprotoc-dev libgoogle-perftools-dev python-dev python  git： gcc 4.8&#43; scons python 2.7&#43; protobuf 2.1&#43; boost（可选）  获取源代码 更换到您想下载gem5源码的目录，然后使用git clone 命令克隆源码仓库：
+git clone https://gem5.googlesource.com/public/gem5 现在您可以更换到包含gem5源码的gem目录了。
+第一次构建gem5 让我们开始构建一个基础的x86系统。
+目前，您必须首先为各个想要模拟的ISA的gem5程序单独进行编译。另外，如果使用ruby（见ruby介绍这一章），您还得单独为每个缓存一致性协议（cache conherence protocol）单独进行编译。
+为了编译gem5，需要使用SCons。Scons使用SConstruct文件（gem5/SConstruct）去搭建一系列的变量然后使用每个源码子目录下的Scons脚本去寻找和编译gem5源码。
+SCons第一次运行的时候，会自动创建gem5/build目录。在这个目录下您能够看到SCons生成的文件。另外有为不同选型生成的各自独立的目录用来编译gem5源码（ISA和缓存一致性协议）
+有许多默认的编译选项在build_opts目录下。这些文件指定了传递给SCon各种参数去构建gem5。我们使用默认的x86参数，并指定编译所有的CPU模型。您能够在build_opts/x86查看这些传递给SCons的默认值。您也可以通过命令行去覆盖这些指定选项的默认值。
+scons build/X86/gem5.opt -j9 gem5 二进制类型 在gem5里的SCons脚本目前支持5种不同的二进制类型的gem5的构建。这些类型基本上都可以从名字看出各自的含义，下文还是解释下细节：
+debug 编译时没有使用优化选项并且包含debug符号。这种二进制类型对使用调试器调试和优化一些gem5的选项十分有用。运行这种类型的程序相对其他类型要慢一些。
+opt 编译时使用了大部分优化参数（例如：-O3），但是也包含了调试符号。这种二进制程序比debug运行的速度要快，同时又有足够的调试信息用来调试大部分问题。
+fast 编译时用了所有的优化参数（包括在特定平台上链接时间优化）和没有debug符号。另外，所有的assert也被移除，但是panic和fatal还是包含的。fast模式是最快速的二进制类型，并且文件大小也比opt模式小很多。尽管如此，fast模式还是您觉得代码没有大的bug的时候使用。
+prof和perf 这两种模式的二进制类型用来获取gem5指标概要。prof模式包含GNU profiler（gprof）概要信息，perf模式包含Google 性能工具（gperftools）概要信息。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/01building-gem5/" />
+<meta property="article:published_time" content="2020-05-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-02T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">构建 gem5</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 2, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          3 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<h1 id="构建gem5">构建gem5</h1>
+<p><strong>作者:</strong>  Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>本章内容覆盖了怎样搭建gem5开发环境和构建gem5的细节</p>
+<h2 id="gem5-环境要求">gem5 环境要求</h2>
+<p>可以阅读[gem5依赖]获取更多细节。</p>
+<p>在Ubuntu系统，您能通过下面的命令行安装依赖:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">sudo apt install build-essential git m4 scons zlib1g zlib1g-dev libprotobuf-dev protobuf-compiler libprotoc-dev libgoogle-perftools-dev python-dev python
+</code></pre></div><ol>
+<li>git：</li>
+<li>gcc 4.8+</li>
+<li>scons</li>
+<li>python 2.7+</li>
+<li>protobuf 2.1+</li>
+<li>boost（可选）</li>
+</ol>
+<h2 id="获取源代码">获取源代码</h2>
+<p>更换到您想下载gem5源码的目录，然后使用git clone 命令克隆源码仓库：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">git clone https://gem5.googlesource.com/public/gem5
+</code></pre></div><p>现在您可以更换到包含gem5源码的gem目录了。</p>
+<h2 id="第一次构建gem5">第一次构建gem5</h2>
+<p>让我们开始构建一个基础的x86系统。</p>
+<p>目前，您必须首先为各个想要模拟的ISA的gem5程序单独进行编译。另外，如果使用ruby（见ruby介绍这一章），您还得单独为每个缓存一致性协议（cache conherence protocol）单独进行编译。</p>
+<p>为了编译gem5，需要使用SCons。Scons使用SConstruct文件（gem5/SConstruct）去搭建一系列的变量然后使用每个源码子目录下的Scons脚本去寻找和编译gem5源码。</p>
+<p>SCons第一次运行的时候，会自动创建gem5/build目录。在这个目录下您能够看到SCons生成的文件。另外有为不同选型生成的各自独立的目录用来编译gem5源码（ISA和缓存一致性协议）</p>
+<p>有许多默认的编译选项在build_opts目录下。这些文件指定了传递给SCon各种参数去构建gem5。我们使用默认的x86参数，并指定编译所有的CPU模型。您能够在build_opts/x86查看这些传递给SCons的默认值。您也可以通过命令行去覆盖这些指定选项的默认值。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">scons build/X86/gem5.opt -j9
+</code></pre></div><h3 id="gem5-二进制类型">gem5 二进制类型</h3>
+<p>在gem5里的SCons脚本目前支持5种不同的二进制类型的gem5的构建。这些类型基本上都可以从名字看出各自的含义，下文还是解释下细节：</p>
+<h4 id="debug">debug</h4>
+<p>编译时没有使用优化选项并且包含debug符号。这种二进制类型对使用调试器调试和优化一些gem5的选项十分有用。运行这种类型的程序相对其他类型要慢一些。</p>
+<h4 id="opt">opt</h4>
+<p>编译时使用了大部分优化参数（例如：-O3），但是也包含了调试符号。这种二进制程序比debug运行的速度要快，同时又有足够的调试信息用来调试大部分问题。</p>
+<h4 id="fast">fast</h4>
+<p>编译时用了所有的优化参数（包括在特定平台上链接时间优化）和没有debug符号。另外，所有的assert也被移除，但是panic和fatal还是包含的。fast模式是最快速的二进制类型，并且文件大小也比opt模式小很多。尽管如此，fast模式还是您觉得代码没有大的bug的时候使用。</p>
+<h4 id="prof和perf">prof和perf</h4>
+<p>这两种模式的二进制类型用来获取gem5指标概要。prof模式包含GNU profiler（gprof）概要信息，perf模式包含Google 性能工具（gperftools）概要信息。</p>
+<p>通常情况下，传递给SCons用来构建gem5的参数是 build/X86/gem6.opt。在这个例子，我们构建gem5.opt(优化并且带调试符号)。我们想在build/X86目录下构建gem5。虽然目前该目录不存在，SCons将在build_opts寻找默认的参数在X86下构建程序。（注：这里在我的8核机器上使用-j 9去进行编译。您应该可以选择一个适合的数值，通常是您机器的核心数+1）。</p>
+<p>编译输出类似下面：</p>
+<pre><code>Checking for C header file Python.h... yes
+Checking for C library pthread... yes
+Checking for C library dl... yes
+Checking for C library util... yes
+Checking for C library m... yes
+Checking for C library python2.7... yes
+Checking for accept(0,0,0) in C++ library None... yes
+Checking for zlibVersion() in C++ library z... yes
+Checking for GOOGLE_PROTOBUF_VERIFY_VERSION in C++ library protobuf... yes
+Checking for clock_nanosleep(0,0,NULL,NULL) in C library None... yes
+Checking for timer_create(CLOCK_MONOTONIC, NULL, NULL) in C library None... no
+Checking for timer_create(CLOCK_MONOTONIC, NULL, NULL) in C library rt... yes
+Checking for C library tcmalloc... yes
+Checking for backtrace_symbols_fd((void*)0, 0, 0) in C library None... yes
+Checking for C header file fenv.h... yes
+Checking for C header file linux/kvm.h... yes
+Checking size of struct kvm_xsave ... yes
+Checking for member exclude_host in struct perf_event_attr...yes
+Building in /local.chinook/gem5/gem5-tutorial/gem5/build/X86
+Variables file /local.chinook/gem5/gem5-tutorial/gem5/build/variables/X86 not found,
+  using defaults in /local.chinook/gem5/gem5-tutorial/gem5/build_opts/X86
+scons: done reading SConscript files.
+scons: Building targets ...
+ [ISA DESC] X86/arch/x86/isa/main.isa -&gt; generated/inc.d
+ [NEW DEPS] X86/arch/x86/generated/inc.d -&gt; x86-deps
+ [ENVIRONS] x86-deps -&gt; x86-environs
+ [     CXX] X86/sim/main.cc -&gt; .o
+ ....
+ .... &lt;lots of output&gt;
+ ....
+ [   SHCXX] nomali/lib/mali_midgard.cc -&gt; .os
+ [   SHCXX] nomali/lib/mali_t6xx.cc -&gt; .os
+ [   SHCXX] nomali/lib/mali_t7xx.cc -&gt; .os
+ [      AR]  -&gt; drampower/libdrampower.a
+ [   SHCXX] nomali/lib/addrspace.cc -&gt; .os
+ [   SHCXX] nomali/lib/mmu.cc -&gt; .os
+ [  RANLIB]  -&gt; drampower/libdrampower.a
+ [   SHCXX] nomali/lib/nomali_api.cc -&gt; .os
+ [      AR]  -&gt; nomali/libnomali.a
+ [  RANLIB]  -&gt; nomali/libnomali.a
+ [     CXX] X86/base/date.cc -&gt; .o
+ [    LINK]  -&gt; X86/gem5.opt
+scons: done building targets.Checking for C header file Python.h... yes
+Checking for C library pthread... yes
+Checking for C library dl... yes
+Checking for C library util... yes
+Checking for C library m... yes
+Checking for C library python2.7... yes
+Checking for accept(0,0,0) in C++ library None... yes
+Checking for zlibVersion() in C++ library z... yes
+Checking for GOOGLE_PROTOBUF_VERIFY_VERSION in C++ library protobuf... yes
+Checking for clock_nanosleep(0,0,NULL,NULL) in C library None... yes
+Checking for timer_create(CLOCK_MONOTONIC, NULL, NULL) in C library None... no
+Checking for timer_create(CLOCK_MONOTONIC, NULL, NULL) in C library rt... yes
+Checking for C library tcmalloc... yes
+Checking for backtrace_symbols_fd((void*)0, 0, 0) in C library None... yes
+Checking for C header file fenv.h... yes
+Checking for C header file linux/kvm.h... yes
+Checking size of struct kvm_xsave ... yes
+Checking for member exclude_host in struct perf_event_attr...yes
+Building in /local.chinook/gem5/gem5-tutorial/gem5/build/X86
+Variables file /local.chinook/gem5/gem5-tutorial/gem5/build/variables/X86 not found,
+  using defaults in /local.chinook/gem5/gem5-tutorial/gem5/build_opts/X86
+scons: done reading SConscript files.
+scons: Building targets ...
+ [ISA DESC] X86/arch/x86/isa/main.isa -&gt; generated/inc.d
+ [NEW DEPS] X86/arch/x86/generated/inc.d -&gt; x86-deps
+ [ENVIRONS] x86-deps -&gt; x86-environs
+ [     CXX] X86/sim/main.cc -&gt; .o
+ ....
+ .... &lt;lots of output&gt;
+ ....
+ [   SHCXX] nomali/lib/mali_midgard.cc -&gt; .os
+ [   SHCXX] nomali/lib/mali_t6xx.cc -&gt; .os
+ [   SHCXX] nomali/lib/mali_t7xx.cc -&gt; .os
+ [      AR]  -&gt; drampower/libdrampower.a
+ [   SHCXX] nomali/lib/addrspace.cc -&gt; .os
+ [   SHCXX] nomali/lib/mmu.cc -&gt; .os
+ [  RANLIB]  -&gt; drampower/libdrampower.a
+ [   SHCXX] nomali/lib/nomali_api.cc -&gt; .os
+ [      AR]  -&gt; nomali/libnomali.a
+ [  RANLIB]  -&gt; nomali/libnomali.a
+ [     CXX] X86/base/date.cc -&gt; .o
+ [    LINK]  -&gt; X86/gem5.opt
+scons: done building targets.
+</code></pre><h2 id="常见错误处理">常见错误处理</h2>
+<h3 id="错误的gcc版本">错误的gcc版本</h3>
+<pre><code>Error: gcc version 4.8 or newer required.
+       Installed version: 4.4.7
+</code></pre><p>需要更新环境变量指向正确版本的gcc，或者安装一个更新版本的gcc。见[gem5 环境要求]这一节</p>
+<h3 id="处理不在默认位置的python">处理不在默认位置的python</h3>
+<p>如果您使用非默认版本的python（例如：版本2.7而您的默认版本是2.5），这样当使用SCons构建gem5的时候会遇到错误。RHEL6的SCons使用硬编码的路径的python，会产生这样的问题。gem5通常能成功编译，但是可能无法运行，下面运行gem5的是一个可能的错误输出：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">Traceback <span style="color:#f92672">(</span>most recent call last<span style="color:#f92672">)</span>:
+  File <span style="color:#e6db74">&#34;........../gem5-stable/src/python/importer.py&#34;</span>, line 93, in &lt;module&gt;
+    sys.meta_path.append<span style="color:#f92672">(</span>importer<span style="color:#f92672">)</span>
+TypeError: <span style="color:#e6db74">&#39;dict&#39;</span> object is not callable
+</code></pre></div><p>为了修复这个问题，您可以运行<strong>python <code>which scons</code> build/X86/gem5.opt</strong>强制SCons使用您环境的python版本，代替<strong>scons build/X86/gem5.opt</strong>。</p>
+<p>您可以在gem5的wiki上查找关于不在默认位置的python版本更多的信息：[ <a href="http://www.gem5.org/Using_a_non-default_Python_installation">Using a non-default Python installation</a>]</p>
+<h2 id="m4宏处理器未安装">M4宏处理器未安装</h2>
+<p>如果M4宏处理器未安装，您会遇到类似下面的错误：</p>
+<pre><code>...
+Checking for member exclude_host in struct perf_event_attr...yes
+Error: Can't find version of M4 macro processor.  Please install M4 and try again.
+</code></pre><p>仅安装M4宏处理包可能未必能解决这个问题，需要同时安装autoconf工具。在Ubuntu系统，您可以使用下面命令：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">sudo apt-get install automake
+</code></pre></div>
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

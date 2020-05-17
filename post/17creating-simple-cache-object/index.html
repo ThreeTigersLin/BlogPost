@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>创建一个简单Cache对象 // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="创建一个简单Cache对象"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+创建一个简单Cache对象 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在本章中，我们将在上一章创建内存SimObject的框架之上，增加缓存的逻辑到里面。
+SimpleCache SimObject 在创建SCon脚本之后，您可以在这里下载我们创建的SimObject python文件。我们将这个简单的内存对象命名为SimpleCache和在src/learning_gem5/simple_cache创建SimObject python文件。
+from m5.params import * from m5.proxy import * from MemObject import MemObject class SimpleCache(MemObject): type = &#39;SimpleCache&#39; cxx_header = &#34;learning_gem5/simple_cache/simple_cache.hh&#34; cpu_side = VectorSlavePort(&#34;CPU side port, receives requests&#34;) mem_side = MasterPort(&#34;Memory side port, sends requests&#34;) latency = Param.Cycles(1, &#34;Cycles taken on a hit or to resolve a miss&#34;) size = Param.MemorySize(&#39;16kB&#39;, &#34;The size of the cache&#34;) system = Param."/>
+
+    <meta property="og:title" content="创建一个简单Cache对象" />
+<meta property="og:description" content="&#43;&#43;&#43;
+创建一个简单Cache对象 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在本章中，我们将在上一章创建内存SimObject的框架之上，增加缓存的逻辑到里面。
+SimpleCache SimObject 在创建SCon脚本之后，您可以在这里下载我们创建的SimObject python文件。我们将这个简单的内存对象命名为SimpleCache和在src/learning_gem5/simple_cache创建SimObject python文件。
+from m5.params import * from m5.proxy import * from MemObject import MemObject class SimpleCache(MemObject): type = &#39;SimpleCache&#39; cxx_header = &#34;learning_gem5/simple_cache/simple_cache.hh&#34; cpu_side = VectorSlavePort(&#34;CPU side port, receives requests&#34;) mem_side = MasterPort(&#34;Memory side port, sends requests&#34;) latency = Param.Cycles(1, &#34;Cycles taken on a hit or to resolve a miss&#34;) size = Param.MemorySize(&#39;16kB&#39;, &#34;The size of the cache&#34;) system = Param." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/17creating-simple-cache-object/" />
+<meta property="article:published_time" content="2020-05-12T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-12T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">创建一个简单Cache对象</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 12, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          7 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<h1 id="创建一个简单cache对象">创建一个简单Cache对象</h1>
+<p><strong>作者:</strong>  Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>在本章中，我们将在上一章创建内存SimObject的框架之上，增加缓存的逻辑到里面。</p>
+<h2 id="simplecache-simobject">SimpleCache SimObject</h2>
+<p>在创建SCon脚本之后，您可以在<a href="">这里</a>下载我们创建的SimObject python文件。我们将这个简单的内存对象命名为SimpleCache和在src/learning_gem5/simple_cache创建SimObject python文件。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">from</span> m5.params <span style="color:#f92672">import</span> <span style="color:#f92672">*</span>
+<span style="color:#f92672">from</span> m5.proxy <span style="color:#f92672">import</span> <span style="color:#f92672">*</span>
+<span style="color:#f92672">from</span> MemObject <span style="color:#f92672">import</span> MemObject
+
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">SimpleCache</span>(MemObject):
+    type <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;SimpleCache&#39;</span>
+    cxx_header <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;learning_gem5/simple_cache/simple_cache.hh&#34;</span>
+
+    cpu_side <span style="color:#f92672">=</span> VectorSlavePort(<span style="color:#e6db74">&#34;CPU side port, receives requests&#34;</span>)
+    mem_side <span style="color:#f92672">=</span> MasterPort(<span style="color:#e6db74">&#34;Memory side port, sends requests&#34;</span>)
+
+    latency <span style="color:#f92672">=</span> Param<span style="color:#f92672">.</span>Cycles(<span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#34;Cycles taken on a hit or to resolve a miss&#34;</span>)
+
+    size <span style="color:#f92672">=</span> Param<span style="color:#f92672">.</span>MemorySize(<span style="color:#e6db74">&#39;16kB&#39;</span>, <span style="color:#e6db74">&#34;The size of the cache&#34;</span>)
+
+    system <span style="color:#f92672">=</span> Param<span style="color:#f92672">.</span>System(Parent<span style="color:#f92672">.</span>any, <span style="color:#e6db74">&#34;The system this cache is part of&#34;</span>)
+</code></pre></div><p>这个文件的SimObject和上一章介绍的SimObject有一些区别。首先，我们有一些额外的参数。一个cache访问的延迟和cache的大小。参数这一章介绍了更多的SimObject参数的细节。</p>
+<p>接下来，我们包含了一个System参数，这个是个指向这个cache连接的主系统的指针。这个需要用来从system对象获取cache块大小，当初始cache的时候。为了引用这个cache连接到的系统对象，我们使用了一个特殊的代理对象。在这个例子中，我们使用Parent.any。</p>
+<p>在Python配置文件里，当一个SimpleCache被初始化的时候，这个代理对象搜索所有的SimpleCache的父对象去寻找匹配System类型的SimObject。因为我们经常使用System作为跟SimObject，您将经常看到在这个代理对象中，system参数被解析。</p>
+<p>第三个和最后一个SimpleCache和SimpleMemobj区别是替换了两个CPU port（inst_port和data_port），SimpleCache使用另外一个特殊的参数：VectorPort。VectorPort表现类似普通的port（例如，也使用getMasterPort和getSlavePort解析端口），但是这个对象运行连接到多个对端上去。然后，我们上面未提到的PortID idx被用来区分不同的port。通过使用Vector port，这个cache能够比SimpleMemobj被更加灵活地连接到系统中。</p>
+<h2 id="实现simplecache">实现SimpleCache</h2>
+<p>大部分simpleCache的代码和SimpleMemobj一样。有一些需要改动的地方，包括在构造函数和几个关键的内存对象函数。</p>
+<p>首先，我们需要在构造函数动态创建CPU侧的port，并基于SimObject参数初始化额外的成员函数。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++">SimpleCache<span style="color:#f92672">::</span>SimpleCache(SimpleCacheParams <span style="color:#f92672">*</span>params) <span style="color:#f92672">:</span>
+    MemObject(params),
+    latency(params<span style="color:#f92672">-&gt;</span>latency),
+    blockSize(params<span style="color:#f92672">-&gt;</span>system<span style="color:#f92672">-&gt;</span>cacheLineSize()),
+    capacity(params<span style="color:#f92672">-&gt;</span>size <span style="color:#f92672">/</span> blockSize),
+    memPort(params<span style="color:#f92672">-&gt;</span>name <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;.mem_side&#34;</span>, <span style="color:#66d9ef">this</span>),
+    blocked(false), outstandingPacket(<span style="color:#66d9ef">nullptr</span>), waitingPortId(<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
+{
+    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> params<span style="color:#f92672">-&gt;</span>port_cpu_side_connection_count; <span style="color:#f92672">++</span>i) {
+        cpuPorts.emplace_back(name() <span style="color:#f92672">+</span> csprintf(<span style="color:#e6db74">&#34;.cpu_side[%d]&#34;</span>, i), i, <span style="color:#66d9ef">this</span>);
+    }
+}
+</code></pre></div><p>在这个函数，我们使用system的参数cacheLineSize来为cache设置blockSize。我们也根据块大小和参数初始化其他后面需要用到的成员变量。最后，我们必须根据这个对象的连接数量创建一个CPUSidePort。因为cpu_side port在SimObject Python文件被声明为VectorSlavePort。参数会根据Python的参数名字自动会生成一个变量名为port_cpu_side_connection_count。对于每个连接，我们增加新的CPUSidePort到SimpleCache类里声明的cpuPort向量。</p>
+<p>我们也增加一个额外成员变量到CPUSidePort去保持它的id，并且我们将它作为参数传递到构造函数。</p>
+<p>接下来，我们需要去实现getMasterPort和getSlavePort。getMasterPort和SimpleMemobj一样。对于getSlavePort，我们需要根据请求的id返回具体的port。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++">BaseSlavePort<span style="color:#f92672">&amp;</span>
+SimpleCache<span style="color:#f92672">::</span>getSlavePort(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> if_name, PortID idx)
+{
+    <span style="color:#66d9ef">if</span> (if_name <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;cpu_side&#34;</span> <span style="color:#f92672">&amp;&amp;</span> idx <span style="color:#f92672">&lt;</span> cpuPorts.size()) {
+        <span style="color:#66d9ef">return</span> cpuPorts[idx];
+    } <span style="color:#66d9ef">else</span> {
+        <span style="color:#66d9ef">return</span> MemObject<span style="color:#f92672">::</span>getSlavePort(if_name, idx);
+    }
+}
+</code></pre></div><p>在这个实现CPUSidePort和MemSidePort大部分和SimpleMemobj一样。唯一不同的地方在于我们需要增加在handleRequest在请求初始化的时候额外的参数是port id。没有这个id我们不能区分将响应转发到哪。这个SimpleMemobj 知道转发响应到哪个端口，因为能根据原始的请求是指令访问和数据访问。但是，这个信息对于SimpleCache没有作用，因为它使用向量port而不是名字port。</p>
+<p>新handleRequest函数比SimpleMemobj的handleRequest函数完成两个不同事情。首先，它存储port id对应之前讨论的不同请求。因为SimpleCache一直阻塞只允许一个请求outstanding，因为我们只需简单保存一个port id。</p>
+<p>其次，访问cache需要时间，因此，我们需要考虑访问cache tag以及访问cache数据的延迟。我们增加一个额外的参数到cache对象，在handleRequest我们现在使用event去stall请求需要的时间。我们调度一个新事件到latency cycle后的时刻。clockEdge函数返回未来事件发生时刻的tick值。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">bool</span>
+SimpleCache<span style="color:#f92672">::</span>handleRequest(PacketPtr pkt, <span style="color:#66d9ef">int</span> port_id)
+{
+    <span style="color:#66d9ef">if</span> (blocked) {
+        <span style="color:#66d9ef">return</span> false;
+    }
+    DPRINTF(SimpleCache, <span style="color:#e6db74">&#34;Got request for addr %#x</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, pkt<span style="color:#f92672">-&gt;</span>getAddr());
+
+    blocked <span style="color:#f92672">=</span> true;
+    waitingPortId <span style="color:#f92672">=</span> port_id;
+
+    schedule(<span style="color:#66d9ef">new</span> AccessEvent(<span style="color:#66d9ef">this</span>, pkt), clockEdge(latency));
+
+    <span style="color:#66d9ef">return</span> true;
+}
+</code></pre></div><p>这个AccessEvent比我们在事件这一章EventWrapper稍微复杂一些，作为替换EventWrapper的方式，在SimpleCache我们将使用新类。在SimpleCache用新的类取代EventWrapper，原因在于我们不能使用EventWrapper，因为我们需要传递这个packet(pkt)从handleRequest到事件处理函数。下面的代码是AccessEvent类，我们只需要实现process函数，该函数调用我们用来处理事件的处理函数，accessTiming。我们同样传递标记参数AutoDelete到事件构造函数所以我们不需要在动态创建对象时担心释放内存。这个事件处理代码将在process函数执行后自动删除对象。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">AccessEvent</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> Event
+{
+  <span style="color:#66d9ef">private</span><span style="color:#f92672">:</span>
+    SimpleCache <span style="color:#f92672">*</span>cache;
+    PacketPtr pkt;
+  <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+    AccessEvent(SimpleCache <span style="color:#f92672">*</span>cache, PacketPtr pkt) <span style="color:#f92672">:</span>
+        Event(Default_Pri, AutoDelete), cache(cache), pkt(pkt)
+    { }
+    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">process</span>() <span style="color:#66d9ef">override</span> {
+        cache<span style="color:#f92672">-&gt;</span>accessTiming(pkt);
+    }
+};
+</code></pre></div><p>现在，我们需要实现事件处理函数，accessTiming。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleCache<span style="color:#f92672">::</span>accessTiming(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">bool</span> hit <span style="color:#f92672">=</span> accessFunctional(pkt);
+    <span style="color:#66d9ef">if</span> (hit) {
+        pkt<span style="color:#f92672">-&gt;</span>makeResponse();
+        sendResponse(pkt);
+    } <span style="color:#66d9ef">else</span> {
+        <span style="color:#f92672">&lt;</span>miss handling<span style="color:#f92672">&gt;</span>
+    }
+}
+</code></pre></div><p>现在，我们需要实现事件处理函数，accessTiming。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleCache<span style="color:#f92672">::</span>accessTiming(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">bool</span> hit <span style="color:#f92672">=</span> accessFunctional(pkt);
+    <span style="color:#66d9ef">if</span> (hit) {
+        pkt<span style="color:#f92672">-&gt;</span>makeResponse();
+        sendResponse(pkt);
+    } <span style="color:#66d9ef">else</span> {
+        <span style="color:#f92672">&lt;</span>miss handling<span style="color:#f92672">&gt;</span>
+    }
+}
+</code></pre></div><p>这个函数首先功能上访问cache。这个函数accessFunctional（下面描述）进行对cache或读或写的功能，当cache命中或者返回cache未命中。</p>
+<p>如果cache命中的话，我们简单需要返回这个packet。为了返回该包，你首先必须调用在packet的makeResponse。比如，如果在packet的内存命令为ReadReq，这个会转成ReadResp。写的行为类似。然后，我们能发送响应包到CPU。</p>
+<p>这个sendResponse函数和在SimpleMemobj的handleResponse进行相同的事情，除了它使用waitingPortId去发送包到对应的port。在这个函数，我们在调用sendPacket(立即调用对端CPU侧的SendTimingReq)之前需要标记SimpleCache为非阻塞。然后，我们试着去发送尝试到CPU侧port，如果SimpleCache现在收到Request和port需要发送重试的情况。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span> SimpleCache<span style="color:#f92672">::</span>sendResponse(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">int</span> port <span style="color:#f92672">=</span> waitingPortId;
+
+    blocked <span style="color:#f92672">=</span> false;
+    waitingPortId <span style="color:#f92672">=</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
+
+    cpuPorts[port].sendPacket(pkt);
+    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span><span style="color:#f92672">&amp;</span> port : cpuPorts) {
+        port.trySendRetry();
+    }
+}
+</code></pre></div><p>回到accessTiming这个函数，我们现在需要处理cache未命中的场景。对于一次miss，我们首先需要检查是否未命中的包大小是整个cache块大小。如果这个packet和请求的大小和cache块对齐，然后我们能简单转发该请求到内存，和SimpleMemobj一样。</p>
+<p>尽管如此，如果packet比cache块小，然后我们需要创建一个新的packet去内存读整个cache块。这里，不管这个packet是读还是写请求，我们发送一个读请求到内存去装载数据到cache里的cache块。对于写操作的例子，这个会在cache从内存加载数据的时候发生。</p>
+<p>然后，我们创建一个新packet，在大小上未cache的blockSize，并且，我们调用allocate函数在Packet对象申请从内存读取数据的空间。注：这个内存会在我们释放packet的时候释放。我们使用原始请求对象的packet，因此内存侧的对象知道原始请求者和原始请求类型用于状态统计。</p>
+<p>最后，我们保存原始的packet指针（pkt）在一个名为outstandingPacket的内存变量里，所以我们能从SimpleCache收到响应里恢复出来。然后，我们经过内存侧的port发送新的packet。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleCache<span style="color:#f92672">::</span>accessTiming(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">bool</span> hit <span style="color:#f92672">=</span> accessFunctional(pkt);
+    <span style="color:#66d9ef">if</span> (hit) {
+        pkt<span style="color:#f92672">-&gt;</span>makeResponse();
+        sendResponse(pkt);
+    } <span style="color:#66d9ef">else</span> {
+        Addr addr <span style="color:#f92672">=</span> pkt<span style="color:#f92672">-&gt;</span>getAddr();
+        Addr block_addr <span style="color:#f92672">=</span> pkt<span style="color:#f92672">-&gt;</span>getBlockAddr(blockSize);
+        <span style="color:#66d9ef">unsigned</span> size <span style="color:#f92672">=</span> pkt<span style="color:#f92672">-&gt;</span>getSize();
+        <span style="color:#66d9ef">if</span> (addr <span style="color:#f92672">==</span> block_addr <span style="color:#f92672">&amp;&amp;</span> size <span style="color:#f92672">==</span> blockSize) {
+            DPRINTF(SimpleCache, <span style="color:#e6db74">&#34;forwarding packet</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+            memPort.sendPacket(pkt);
+        } <span style="color:#66d9ef">else</span> {
+            DPRINTF(SimpleCache, <span style="color:#e6db74">&#34;Upgrading packet to block size</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+            panic_if(addr <span style="color:#f92672">-</span> block_addr <span style="color:#f92672">+</span> size <span style="color:#f92672">&gt;</span> blockSize,
+                     <span style="color:#e6db74">&#34;Cannot handle accesses that span multiple cache lines&#34;</span>);
+
+            assert(pkt<span style="color:#f92672">-&gt;</span>needsResponse());
+            MemCmd cmd;
+            <span style="color:#66d9ef">if</span> (pkt<span style="color:#f92672">-&gt;</span>isWrite() <span style="color:#f92672">||</span> pkt<span style="color:#f92672">-&gt;</span>isRead()) {
+                cmd <span style="color:#f92672">=</span> MemCmd<span style="color:#f92672">::</span>ReadReq;
+            } <span style="color:#66d9ef">else</span> {
+                panic(<span style="color:#e6db74">&#34;Unknown packet type in upgrade size&#34;</span>);
+            }
+
+            PacketPtr new_pkt <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> Packet(pkt<span style="color:#f92672">-&gt;</span>req, cmd, blockSize);
+            new_pkt<span style="color:#f92672">-&gt;</span>allocate();
+
+            outstandingPacket <span style="color:#f92672">=</span> pkt;
+
+            memPort.sendPacket(new_pkt);
+        }
+    }
+}
+</code></pre></div><p>对于内存访问的响应，我们知道这个是由cache miss引起的。第一步是将响应的响应包插入到cache。</p>
+<p>然后，如果有个outstandingPacket，这个例子，我们需要转发该packet到原始的请求方。如果没有outstandingPacket，意味着我们需要转发响应里的pkt指针到原始的请求方。</p>
+<p>如果我们收到的响应为一个升级包（因为原始请求比cacheline大小要小），然后我们需要复制新的数据到outstandingPacket或者写到cache。然后我们需要删除我们在未命中处理逻辑中创建的新包。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">bool</span>
+SimpleCache<span style="color:#f92672">::</span>handleResponse(PacketPtr pkt)
+{
+    assert(blocked);
+    DPRINTF(SimpleCache, <span style="color:#e6db74">&#34;Got response for addr %#x</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, pkt<span style="color:#f92672">-&gt;</span>getAddr());
+    insert(pkt);
+
+    <span style="color:#66d9ef">if</span> (outstandingPacket <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nullptr</span>) {
+        accessFunctional(outstandingPacket);
+        outstandingPacket<span style="color:#f92672">-&gt;</span>makeResponse();
+        <span style="color:#66d9ef">delete</span> pkt;
+        pkt <span style="color:#f92672">=</span> outstandingPacket;
+        outstandingPacket <span style="color:#f92672">=</span> <span style="color:#66d9ef">nullptr</span>;
+    } <span style="color:#75715e">// else, pkt contains the data it needs
+</span><span style="color:#75715e"></span>
+    sendResponse(pkt);
+
+    <span style="color:#66d9ef">return</span> true;
+}
+</code></pre></div><h2 id="cache功能逻辑">cache功能逻辑</h2>
+<p>现在，我们需要实现两个函数：accessFunctional和insert。这两个函数构成了这个cache逻辑的主要功能组件。</p>
+<p>首先，为了功能上能更新cache，我们首先需要存储cache的内容。这个最简单实现方式是存储一个map（hash表）进行从地址到数据的映射。因此，我们将增加下面的成员到SimpleCache。</p>
+<pre><code>std::unordered_map&lt;Addr, uint8_t*&gt; cacheStore;
+</code></pre><p>为了访问cache，我们首先检查是否有入口在map里面，这个入口能匹配packet的地址。我们使用Packet类的getBlockAddr函数得到块对齐的地址，然后，我们简单在map进行搜索。如果我们寻找不到这个地址，然后，这个函数返回false，这表示数据没在cache里，是个未命中的情况。</p>
+<p>另外，如果packet是个写请求，我们需要更新cache的数据。我们将该数据从packet写到cache。我们使用writeDataToBlock函数将packet里的数据写到对应的块里面。这个函数带一个cache块里的偏移和写入块大小作为参数。</p>
+<p>如果packet是个读请求，我们需要更新packet的数据。setDataFramBlock函数完成和writeDataToBlock类似的偏移计算。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">bool</span>
+SimpleCache<span style="color:#f92672">::</span>accessFunctional(PacketPtr pkt)
+{
+    Addr block_addr <span style="color:#f92672">=</span> pkt<span style="color:#f92672">-&gt;</span>getBlockAddr(blockSize);
+    <span style="color:#66d9ef">auto</span> it <span style="color:#f92672">=</span> cacheStore.find(block_addr);
+    <span style="color:#66d9ef">if</span> (it <span style="color:#f92672">!=</span> cacheStore.end()) {
+        <span style="color:#66d9ef">if</span> (pkt<span style="color:#f92672">-&gt;</span>isWrite()) {
+            pkt<span style="color:#f92672">-&gt;</span>writeDataToBlock(it<span style="color:#f92672">-&gt;</span>second, blockSize);
+        } <span style="color:#66d9ef">else</span> <span style="color:#a6e22e">if</span> (pkt<span style="color:#f92672">-&gt;</span>isRead()) {
+            pkt<span style="color:#f92672">-&gt;</span>setDataFromBlock(it<span style="color:#f92672">-&gt;</span>second, blockSize);
+        } <span style="color:#66d9ef">else</span> {
+            panic(<span style="color:#e6db74">&#34;Unknown packet type!&#34;</span>);
+        }
+        <span style="color:#66d9ef">return</span> true;
+    }
+    <span style="color:#66d9ef">return</span> false;
+}
+</code></pre></div><p>最后，我们同样也需要实现insert函数。</p>
+<p>这个函数每次从内存侧端口响应一个请求都会被调用到。</p>
+<p>第一步是检查是否cache已经满了，如果cache没有更多的入口，即超过了SimObject参数里设置的容量，我们需要替换掉一些。下面的代码替换随机的cache入口，由C++ unorder_map的hash表实现。</p>
+<p>对于一次替换，我们需要些数据块到内存，因为它已经被更新过。对于这个，我们创建一个新的Request-Packet对，这个packet使用一个新的内存命令，MemCmd::WritebackDirty。然后，我们发送这个包到内存侧端口（memPort）并且擦除掉在cache存储数据的map里的条目。</p>
+<p>然后，当一个块被替换后，我们增加新的地址和数据到这个cache里，我们简单申请一块空间，然后增加到map的条目里。最后，我们根据从响应包返回的数据将数据写到申请的块中。这个数据和cache块大小一致，因为我们在cache miss的逻辑里保证了新的packet大小和cache块大小一样，如果未命中的请求packet的数据小于一个cache块的话。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleCache<span style="color:#f92672">::</span>insert(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">if</span> (cacheStore.size() <span style="color:#f92672">&gt;=</span> capacity) {
+        <span style="color:#75715e">// Select random thing to evict. This is a little convoluted since we
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// are using a std::unordered_map. See http://bit.ly/2hrnLP2
+</span><span style="color:#75715e"></span>        <span style="color:#66d9ef">int</span> bucket, bucket_size;
+        <span style="color:#66d9ef">do</span> {
+            bucket <span style="color:#f92672">=</span> random_mt.random(<span style="color:#ae81ff">0</span>, (<span style="color:#66d9ef">int</span>)cacheStore.bucket_count() <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>);
+        } <span style="color:#66d9ef">while</span> ( (bucket_size <span style="color:#f92672">=</span> cacheStore.bucket_size(bucket)) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> );
+        <span style="color:#66d9ef">auto</span> block <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>next(cacheStore.begin(bucket),
+                               random_mt.random(<span style="color:#ae81ff">0</span>, bucket_size <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>));
+
+        RequestPtr req <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> Request(block<span style="color:#f92672">-&gt;</span>first, blockSize, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>);
+        PacketPtr new_pkt <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> Packet(req, MemCmd<span style="color:#f92672">::</span>WritebackDirty, blockSize);
+        new_pkt<span style="color:#f92672">-&gt;</span>dataDynamic(block<span style="color:#f92672">-&gt;</span>second); <span style="color:#75715e">// This will be deleted later
+</span><span style="color:#75715e"></span>
+        DPRINTF(SimpleCache, <span style="color:#e6db74">&#34;Writing packet back %s</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, pkt<span style="color:#f92672">-&gt;</span>print());
+        memPort.sendTimingReq(new_pkt);
+
+        cacheStore.erase(block<span style="color:#f92672">-&gt;</span>first);
+    }
+    <span style="color:#66d9ef">uint8_t</span> <span style="color:#f92672">*</span>data <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#66d9ef">uint8_t</span>[blockSize];
+    cacheStore[pkt<span style="color:#f92672">-&gt;</span>getAddr()] <span style="color:#f92672">=</span> data;
+
+    pkt<span style="color:#f92672">-&gt;</span>writeDataToBlock(data, blockSize);
+}
+</code></pre></div><h2 id="为cache创建一个配置文件">为cache创建一个配置文件</h2>
+<p>我们实现cache的最后一步，就是创建一个新的Python配置文件。我们能使用上一章的轮廓作为起点。唯一的区别就是我们可能希望设置这个cache的参数（例如，设置这个cache的大小）和替换port的名字（data_port和inst_port）,我们仅使用cpu_side port两次。因为cpu_side是个VectorPort，它将自动创建多个port连接。</p>
+<pre><code>import m5
+from m5.objects import *
+
+...
+
+system.cache = SimpleCache(size='1kB')
+
+system.cpu.icache_port = system.cache.cpu_side
+system.cpu.dcache_port = system.cache.cpu_side
+
+system.membus = SystemXBar()
+
+system.cache.mem_side = system.membus.slave
+
+...
+</code></pre><p>python配置文件可以在<a href="">这里</a>下载。</p>
+<p>运行这个脚本应该产生hello二进制文件对应的期望输出。</p>
+<pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jan 10 2017 17:38:15
+gem5 started Jan 10 2017 17:40:03
+gem5 executing on chinook, pid 29031
+command line: build/X86/gem5.opt configs/learning_gem5/part2/simple_cache.py
+
+Global frequency set at 1000000000000 ticks per second
+warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (512 Mbytes)
+0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000
+warn: CoherentXBar system.membus has no snooping ports attached!
+warn: ClockedObject: More than one power state change request encountered within the same simulation tick
+Beginning simulation!
+info: Entering event queue @ 0.  Starting simulation...
+Hello world!
+Exiting @ tick 56082000 because target called exit()
+</code></pre><p>修改cache的大小，例如改到128KB，应该会提升系统的性能。</p>
+<pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jan 10 2017 17:38:15
+gem5 started Jan 10 2017 17:41:10
+gem5 executing on chinook, pid 29037
+command line: build/X86/gem5.opt configs/learning_gem5/part2/simple_cache.py
+
+Global frequency set at 1000000000000 ticks per second
+warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (512 Mbytes)
+0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000
+warn: CoherentXBar system.membus has no snooping ports attached!
+warn: ClockedObject: More than one power state change request encountered within the same simulation tick
+Beginning simulation!
+info: Entering event queue @ 0.  Starting simulation...
+Hello world!
+Exiting @ tick 32685000 because target called exit()
+</code></pre><h2 id="增加状态到cache">增加状态到cache</h2>
+<p>知道总体的系统执行时间是一个很重要的指标。不仅如此，您也可能想知道包含其他的状态，比如cache的命中率和未命中率。为了完成这个功能，我们需要增加一些状态到SimpleCache对象。</p>
+<p>首先，我们需要在SimpleCache对象中声明状态。他们在Stats命名空间里。在这个例子，我们将增加4个状态。命中的次数、未命中的次数是简单的Scalar类型的标量。我们将增加missLatency衡量处理未命中的时间。最后，我们增加一个特殊的状态叫做Formula来衡量命中率，它是其他状态（命中次数和未命中次数）的公式组合。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">SimpleCache</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> MemObject
+{
+  <span style="color:#66d9ef">private</span><span style="color:#f92672">:</span>
+    ...
+
+    Tick missTime; <span style="color:#75715e">// To track the miss latency
+</span><span style="color:#75715e"></span>
+    Stats<span style="color:#f92672">::</span>Scalar hits;
+    Stats<span style="color:#f92672">::</span>Scalar misses;
+    Stats<span style="color:#f92672">::</span>Histogram missLatency;
+    Stats<span style="color:#f92672">::</span>Formula hitRatio;
+
+  <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+    ...
+
+    <span style="color:#66d9ef">void</span> regStats() <span style="color:#66d9ef">override</span>;
+};
+</code></pre></div><p>接下来，我们必须定义regStats函数进行重载，以便该状态能注册到gem5的状态基础设施。这里，对于每一个状态，我们在基于父SimObject的基础上给它命名一个名字和描述。对于直方图状态，我们也需要用很多桶数据来初始化它。最后，对于公式，我们只需用代码来实现公式的计算过程。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleCache<span style="color:#f92672">::</span>regStats()
+{
+    <span style="color:#75715e">// If you don&#39;t do this you get errors about uninitialized stats.
+</span><span style="color:#75715e"></span>    MemObject<span style="color:#f92672">::</span>regStats();
+
+    hits.name(name() <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;.hits&#34;</span>)
+        .desc(<span style="color:#e6db74">&#34;Number of hits&#34;</span>)
+        ;
+
+    misses.name(name() <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;.misses&#34;</span>)
+        .desc(<span style="color:#e6db74">&#34;Number of misses&#34;</span>)
+        ;
+
+    missLatency.name(name() <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;.missLatency&#34;</span>)
+        .desc(<span style="color:#e6db74">&#34;Ticks for misses to the cache&#34;</span>)
+        .init(<span style="color:#ae81ff">16</span>) <span style="color:#75715e">// number of buckets
+</span><span style="color:#75715e"></span>        ;
+
+    hitRatio.name(name() <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;.hitRatio&#34;</span>)
+        .desc(<span style="color:#e6db74">&#34;The ratio of hits to the total accesses to the cache&#34;</span>)
+        ;
+
+    hitRatio <span style="color:#f92672">=</span> hits <span style="color:#f92672">/</span> (hits <span style="color:#f92672">+</span> misses);
+
+}
+</code></pre></div><p>最后，我们需要在代码里面更新状态。在accessTiming类中，我们能根据一次访问是否命中cache来提高hit命中率或miss未命中率。另外，对于未命中这种情况，我们还保存未命中时访问延迟时间。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleCache<span style="color:#f92672">::</span>accessTiming(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">bool</span> hit <span style="color:#f92672">=</span> accessFunctional(pkt);
+    <span style="color:#66d9ef">if</span> (hit) {
+        hits<span style="color:#f92672">++</span>; <span style="color:#75715e">// update stats
+</span><span style="color:#75715e"></span>        pkt<span style="color:#f92672">-&gt;</span>makeResponse();
+        sendResponse(pkt);
+    } <span style="color:#66d9ef">else</span> {
+        misses<span style="color:#f92672">++</span>; <span style="color:#75715e">// update stats
+</span><span style="color:#75715e"></span>        missTime <span style="color:#f92672">=</span> curTick();
+        ...
+</code></pre></div><p>然后，当我们收到一个响应，我们需要增加直方图用到的延迟数据。对于这个例子，我们使用简单的实现，增加一个单一的点到直方图。直方图会自动修改桶的大小来匹配它收到的数据。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">bool</span>
+SimpleCache<span style="color:#f92672">::</span>handleResponse(PacketPtr pkt)
+{
+    insert(pkt);
+
+    missLatency.sample(curTick() <span style="color:#f92672">-</span> missTime);
+    ...
+</code></pre></div><p>完整的SimpleCache头文件可以在<a href="">这里</a>下载。完整的SimpleCache实现可以在<a href="">这里</a>下载。</p>
+<p>现在，如果我们运行上面的配置文件，我们可以在stats.txt文件里检查状态。对于1KB的例子，我们获得下面的状态。91%的访问命中率和miss的延迟为5334tick（53ns）。</p>
+<p>完整的SimpleCache头文件可以在<a href="">这里</a>下载，完整的SimpleCache可以在<a href="">这里</a>下载。</p>
+<p>现在，我们运行上面的配置文件，我们能在stats.txt文件检查状态。对于1KB的</p>
+<pre><code>system.cache.hits                                8431                       # Number of hits
+system.cache.misses                               877                       # Number of misses
+system.cache.missLatency::samples                 877                       # Ticks for misses to the cache
+system.cache.missLatency::mean           53334.093501                       # Ticks for misses to the cache
+system.cache.missLatency::gmean          44506.409356                       # Ticks for misses to the cache
+system.cache.missLatency::stdev          36749.446469                       # Ticks for misses to the cache
+system.cache.missLatency::0-32767                 305     34.78%     34.78% # Ticks for misses to the cache
+system.cache.missLatency::32768-65535             365     41.62%     76.40% # Ticks for misses to the cache
+system.cache.missLatency::65536-98303             164     18.70%     95.10% # Ticks for misses to the cache
+system.cache.missLatency::98304-131071             12      1.37%     96.47% # Ticks for misses to the cache
+system.cache.missLatency::131072-163839            17      1.94%     98.40% # Ticks for misses to the cache
+system.cache.missLatency::163840-196607             7      0.80%     99.20% # Ticks for misses to the cache
+system.cache.missLatency::196608-229375             0      0.00%     99.20% # Ticks for misses to the cache
+system.cache.missLatency::229376-262143             0      0.00%     99.20% # Ticks for misses to the cache
+system.cache.missLatency::262144-294911             2      0.23%     99.43% # Ticks for misses to the cache
+system.cache.missLatency::294912-327679             4      0.46%     99.89% # Ticks for misses to the cache
+system.cache.missLatency::327680-360447             1      0.11%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::360448-393215             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::393216-425983             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::425984-458751             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::458752-491519             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::491520-524287             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::total                   877                       # Ticks for misses to the cache
+system.cache.hitRatio     
+</code></pre><p>当使用128KB cache，我们直接获得更高的命中率。看上去我们的cache以期望的方式工作。</p>
+<pre><code>system.cache.hits                                8944                       # Number of hits
+system.cache.misses                               364                       # Number of misses
+system.cache.missLatency::samples                 364                       # Ticks for misses to the cache
+system.cache.missLatency::mean           64222.527473                       # Ticks for misses to the cache
+system.cache.missLatency::gmean          61837.584812                       # Ticks for misses to the cache
+system.cache.missLatency::stdev          27232.443748                       # Ticks for misses to the cache
+system.cache.missLatency::0-32767                   0      0.00%      0.00% # Ticks for misses to the cache
+system.cache.missLatency::32768-65535             254     69.78%     69.78% # Ticks for misses to the cache
+system.cache.missLatency::65536-98303             106     29.12%     98.90% # Ticks for misses to the cache
+system.cache.missLatency::98304-131071              0      0.00%     98.90% # Ticks for misses to the cache
+system.cache.missLatency::131072-163839             0      0.00%     98.90% # Ticks for misses to the cache
+system.cache.missLatency::163840-196607             0      0.00%     98.90% # Ticks for misses to the cache
+system.cache.missLatency::196608-229375             0      0.00%     98.90% # Ticks for misses to the cache
+system.cache.missLatency::229376-262143             0      0.00%     98.90% # Ticks for misses to the cache
+system.cache.missLatency::262144-294911             2      0.55%     99.45% # Ticks for misses to the cache
+system.cache.missLatency::294912-327679             1      0.27%     99.73% # Ticks for misses to the cache
+system.cache.missLatency::327680-360447             1      0.27%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::360448-393215             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::393216-425983             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::425984-458751             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::458752-491519             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::491520-524287             0      0.00%    100.00% # Ticks for misses to the cache
+system.cache.missLatency::total                   364                       # Ticks for misses to the cache
+system.cache.hitRatio       
+</code></pre>
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

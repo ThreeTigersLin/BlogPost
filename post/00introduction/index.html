@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>介绍 // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="介绍"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+本文的目标是向读者详细介绍怎样使用gem5和gem5代码库。本文的目的不是提供gem5每个特性的细节描述，通过阅读本文读者可以在课堂和计算机系统结构研究使用gem5的过程中觉得得心应手。另外，读者可以通过修改或者扩展gem5提交到gem5主仓库的方式去改进gem5。
+本文是作者在Wisconsin-Madison大学过去的6年的研究生阶段总结的个人使用gem5的经验。举的这些例子是熟悉它的一种方式。和Python（python的诀窍在于“有且只有一个明显的方法去做事情” &ndash; 来自《The Zen of Python》）不一样的地方在于gem5的世界有多种方式去完成同一件事情，因此我的观点是通过本文中的许多例子是最好的上手方式。
+我学到的最重要的一课是要想使用像gem5这样复杂的工具，最好在用它之前就真正理解它是怎样工作的。
+您能够在下面的链接中找到本书的源码 [https://gem5.googlesource.com/public/gem5-website/&#43;/refs/heads/master/_pages/documentation/learning_gem5/]。
+gem5是什么 gem5是模块化的通过离散事件驱动的计算机系统仿真平台。即意味着如下：
+ gem5的各种组件是可以重新排列的、参数化的、可扩展的和容易根据需要替换的。 它通过一系列的离散事件模拟逝去的时间。 它能使用不同的方式用来模拟一个或者多个计算机系统。 它不仅仅只是模拟器，也是一个模拟平台。它能够让你使用许多预先定义的组件去构建你自己的仿真系统。  gem5主要由C&#43;&#43;和python书写，并且大部分组件都是使用BSD风格的软件许可。在完整系统模式（full system mode，FS mode）下，它能够模拟包含各种设备在内的系统并能够在此之上运行操作系统，或者在系统调用模拟模式（system emulation mode，SE mode）。仿真器在多种层次支持执行Alpha、ARM、MIPS、Power、SPARC、RISC-V和x86上的二进制程序。CPU模型涵盖了两个单CPI模型、一个乱序执行模型和一个按序流水线模型；内存系统模型涵盖了crossbar或者能够用来灵活进行内存子系统模拟的Ruby模拟器。
+还有其他组件和特性没在此一一提及，但从上面的描述也能明显察觉到gem5是一个功能强大的仿真平台。在许多个人和公司的支持下gem5还在不断的开发，新的特性在现有的基础上不断被加进来。
+能力之外的事情 gem5被设计用来计算机系统结构研究，但是如果您想研究一些新的东西，它不能帮助您验证它能力之外的想法。如果可以的话，有可能意味着其他人已开发用来验证的类似的想法，并将它发布出来。
+如果想从获得更多能力，您需要为gem5增加新的特性用来实现您的目标。gem5模块化的设计能帮助您进行修改，而不需要理解模拟器的每一个部分细节。
+一旦您增加您需要的特性，请多考虑将您的改动贡献回gem5。这样其他人就能够使用您的辛苦工作，并且gem5能变得更好的模拟器。
+寻求帮助 在gem5有两个邮件列表可以用来寻求帮助和建议。gem5-dev邮件列表是用来给工作在gem5主线版本开发者使用，这个版本通过网站发布，并且基本上读者都在基于上面开展工作。gem5-user邮件列表是个更大的供只使用gem5进行用户项目并不准备发布到gem5官方版本的邮件列表。
+大部分情况，gem5-users是个比较合适使用的邮件列表，大部分gem5-dev邮件列表的用户同样也使用gem5-users邮件列表，这样大部分的gem5社区的其他成员都能看到您的博客。邮件列表能解答您的问题回答您的疑问，同样邮件列表也能帮助其他人因为他们也能看见回答您问题的人发送的答案。更多关于邮件列表的信息，可先登录访问邮件列表或者浏览文章归档[Mailing Lists]。
+在向邮件列表上报问题前，请先阅读 [Reporting Problems]。"/>
+
+    <meta property="og:title" content="介绍" />
+<meta property="og:description" content="&#43;&#43;&#43;
+作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+本文的目标是向读者详细介绍怎样使用gem5和gem5代码库。本文的目的不是提供gem5每个特性的细节描述，通过阅读本文读者可以在课堂和计算机系统结构研究使用gem5的过程中觉得得心应手。另外，读者可以通过修改或者扩展gem5提交到gem5主仓库的方式去改进gem5。
+本文是作者在Wisconsin-Madison大学过去的6年的研究生阶段总结的个人使用gem5的经验。举的这些例子是熟悉它的一种方式。和Python（python的诀窍在于“有且只有一个明显的方法去做事情” &ndash; 来自《The Zen of Python》）不一样的地方在于gem5的世界有多种方式去完成同一件事情，因此我的观点是通过本文中的许多例子是最好的上手方式。
+我学到的最重要的一课是要想使用像gem5这样复杂的工具，最好在用它之前就真正理解它是怎样工作的。
+您能够在下面的链接中找到本书的源码 [https://gem5.googlesource.com/public/gem5-website/&#43;/refs/heads/master/_pages/documentation/learning_gem5/]。
+gem5是什么 gem5是模块化的通过离散事件驱动的计算机系统仿真平台。即意味着如下：
+ gem5的各种组件是可以重新排列的、参数化的、可扩展的和容易根据需要替换的。 它通过一系列的离散事件模拟逝去的时间。 它能使用不同的方式用来模拟一个或者多个计算机系统。 它不仅仅只是模拟器，也是一个模拟平台。它能够让你使用许多预先定义的组件去构建你自己的仿真系统。  gem5主要由C&#43;&#43;和python书写，并且大部分组件都是使用BSD风格的软件许可。在完整系统模式（full system mode，FS mode）下，它能够模拟包含各种设备在内的系统并能够在此之上运行操作系统，或者在系统调用模拟模式（system emulation mode，SE mode）。仿真器在多种层次支持执行Alpha、ARM、MIPS、Power、SPARC、RISC-V和x86上的二进制程序。CPU模型涵盖了两个单CPI模型、一个乱序执行模型和一个按序流水线模型；内存系统模型涵盖了crossbar或者能够用来灵活进行内存子系统模拟的Ruby模拟器。
+还有其他组件和特性没在此一一提及，但从上面的描述也能明显察觉到gem5是一个功能强大的仿真平台。在许多个人和公司的支持下gem5还在不断的开发，新的特性在现有的基础上不断被加进来。
+能力之外的事情 gem5被设计用来计算机系统结构研究，但是如果您想研究一些新的东西，它不能帮助您验证它能力之外的想法。如果可以的话，有可能意味着其他人已开发用来验证的类似的想法，并将它发布出来。
+如果想从获得更多能力，您需要为gem5增加新的特性用来实现您的目标。gem5模块化的设计能帮助您进行修改，而不需要理解模拟器的每一个部分细节。
+一旦您增加您需要的特性，请多考虑将您的改动贡献回gem5。这样其他人就能够使用您的辛苦工作，并且gem5能变得更好的模拟器。
+寻求帮助 在gem5有两个邮件列表可以用来寻求帮助和建议。gem5-dev邮件列表是用来给工作在gem5主线版本开发者使用，这个版本通过网站发布，并且基本上读者都在基于上面开展工作。gem5-user邮件列表是个更大的供只使用gem5进行用户项目并不准备发布到gem5官方版本的邮件列表。
+大部分情况，gem5-users是个比较合适使用的邮件列表，大部分gem5-dev邮件列表的用户同样也使用gem5-users邮件列表，这样大部分的gem5社区的其他成员都能看到您的博客。邮件列表能解答您的问题回答您的疑问，同样邮件列表也能帮助其他人因为他们也能看见回答您问题的人发送的答案。更多关于邮件列表的信息，可先登录访问邮件列表或者浏览文章归档[Mailing Lists]。
+在向邮件列表上报问题前，请先阅读 [Reporting Problems]。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/00introduction/" />
+<meta property="article:published_time" content="2020-05-01T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-01T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">介绍</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 1, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          1 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<p><strong>作者:</strong> Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>本文的目标是向读者详细介绍怎样使用gem5和gem5代码库。本文的目的不是提供gem5每个特性的细节描述，通过阅读本文读者可以在课堂和计算机系统结构研究使用gem5的过程中觉得得心应手。另外，读者可以通过修改或者扩展gem5提交到gem5主仓库的方式去改进gem5。</p>
+<p>本文是作者在Wisconsin-Madison大学过去的6年的研究生阶段总结的个人使用gem5的经验。举的这些例子是熟悉它的一种方式。和Python（python的诀窍在于“有且只有一个明显的方法去做事情” &ndash; 来自《The Zen of Python》）不一样的地方在于gem5的世界有多种方式去完成同一件事情，因此我的观点是通过本文中的许多例子是最好的上手方式。</p>
+<p>我学到的最重要的一课是要想使用像gem5这样复杂的工具，最好在用它之前就真正理解它是怎样工作的。</p>
+<p>您能够在下面的链接中找到本书的源码 [https://gem5.googlesource.com/public/gem5-website/+/refs/heads/master/_pages/documentation/learning_gem5/]。</p>
+<h2 id="gem5是什么">gem5是什么</h2>
+<p>gem5是模块化的通过离散事件驱动的计算机系统仿真平台。即意味着如下：</p>
+<ol>
+<li>gem5的各种组件是可以重新排列的、参数化的、可扩展的和容易根据需要替换的。</li>
+<li>它通过一系列的离散事件模拟逝去的时间。</li>
+<li>它能使用不同的方式用来模拟一个或者多个计算机系统。</li>
+<li>它不仅仅只是模拟器，也是一个模拟平台。它能够让你使用许多预先定义的组件去构建你自己的仿真系统。</li>
+</ol>
+<p>gem5主要由C++和python书写，并且大部分组件都是使用BSD风格的软件许可。在完整系统模式（full system mode，FS mode）下，它能够模拟包含各种设备在内的系统并能够在此之上运行操作系统，或者在系统调用模拟模式（system emulation mode，SE mode）。仿真器在多种层次支持执行Alpha、ARM、MIPS、Power、SPARC、RISC-V和x86上的二进制程序。CPU模型涵盖了两个单CPI模型、一个乱序执行模型和一个按序流水线模型；内存系统模型涵盖了crossbar或者能够用来灵活进行内存子系统模拟的Ruby模拟器。</p>
+<p>还有其他组件和特性没在此一一提及，但从上面的描述也能明显察觉到gem5是一个功能强大的仿真平台。在许多个人和公司的支持下gem5还在不断的开发，新的特性在现有的基础上不断被加进来。</p>
+<h2 id="能力之外的事情">能力之外的事情</h2>
+<p>gem5被设计用来计算机系统结构研究，但是如果您想研究一些新的东西，它不能帮助您验证它能力之外的想法。如果可以的话，有可能意味着其他人已开发用来验证的类似的想法，并将它发布出来。</p>
+<p>如果想从获得更多能力，您需要为gem5增加新的特性用来实现您的目标。gem5模块化的设计能帮助您进行修改，而不需要理解模拟器的每一个部分细节。</p>
+<p>一旦您增加您需要的特性，请多考虑将您的改动贡献回gem5。这样其他人就能够使用您的辛苦工作，并且gem5能变得更好的模拟器。</p>
+<h2 id="寻求帮助">寻求帮助</h2>
+<p>在gem5有两个邮件列表可以用来寻求帮助和建议。gem5-dev邮件列表是用来给工作在gem5主线版本开发者使用，这个版本通过网站发布，并且基本上读者都在基于上面开展工作。gem5-user邮件列表是个更大的供只使用gem5进行用户项目并不准备发布到gem5官方版本的邮件列表。</p>
+<p>大部分情况，gem5-users是个比较合适使用的邮件列表，大部分gem5-dev邮件列表的用户同样也使用gem5-users邮件列表，这样大部分的gem5社区的其他成员都能看到您的博客。邮件列表能解答您的问题回答您的疑问，同样邮件列表也能帮助其他人因为他们也能看见回答您问题的人发送的答案。更多关于邮件列表的信息，可先登录访问邮件列表或者浏览文章归档[Mailing Lists]。</p>
+<p>在向邮件列表上报问题前，请先阅读 [Reporting Problems]。</p>
+
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

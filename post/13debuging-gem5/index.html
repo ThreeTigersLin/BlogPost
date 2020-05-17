@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>调试Gem5 // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="调试Gem5"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+调试Gem5 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在之前的章节里，我们介绍了怎样去创建一个简单的SimObject。在本章，我们将上面简单例子中的stdout替换成gem5的调试功能支持的方式。
+gem5通过debug flags提供printf风格的跟踪调试功能。这些flags允许每个组件拥有debug-print的语句，而不用同时使能它们。当运行gem5的时候，您可以从命令行里指定使能哪个flag。
+使用debug flags 以第一个简单的simple.py脚本为例子，您可以使能DRAM 调试标记，然后能够获得类型下面的输出。注意这样会生成许多输出到控制台（大概有7MB）。
+build/X86/gem5.opt --debug-flags=DRAM configs/learning_gem5/part1/simple.py | head -n 50 gem5 Simulator System. http://gem5.org gem5 is copyrighted software; use the --copyright option for details. gem5 compiled Jan 3 2017 16:03:38 gem5 started Jan 3 2017 16:11:47 gem5 executing on chinook, pid 19234 command line: build/X86/gem5.opt --debug-flags=Exec configs/learning_gem5/part1/simple.py Global frequency set at 1000000000000 ticks per second 0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000 warn: ClockedObject: More than one power state change request encountered within the same simulation tick Beginning simulation!"/>
+
+    <meta property="og:title" content="调试Gem5" />
+<meta property="og:description" content="&#43;&#43;&#43;
+调试Gem5 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在之前的章节里，我们介绍了怎样去创建一个简单的SimObject。在本章，我们将上面简单例子中的stdout替换成gem5的调试功能支持的方式。
+gem5通过debug flags提供printf风格的跟踪调试功能。这些flags允许每个组件拥有debug-print的语句，而不用同时使能它们。当运行gem5的时候，您可以从命令行里指定使能哪个flag。
+使用debug flags 以第一个简单的simple.py脚本为例子，您可以使能DRAM 调试标记，然后能够获得类型下面的输出。注意这样会生成许多输出到控制台（大概有7MB）。
+build/X86/gem5.opt --debug-flags=DRAM configs/learning_gem5/part1/simple.py | head -n 50 gem5 Simulator System. http://gem5.org gem5 is copyrighted software; use the --copyright option for details. gem5 compiled Jan 3 2017 16:03:38 gem5 started Jan 3 2017 16:11:47 gem5 executing on chinook, pid 19234 command line: build/X86/gem5.opt --debug-flags=Exec configs/learning_gem5/part1/simple.py Global frequency set at 1000000000000 ticks per second 0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000 warn: ClockedObject: More than one power state change request encountered within the same simulation tick Beginning simulation!" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/13debuging-gem5/" />
+<meta property="article:published_time" content="2020-05-08T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-08T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">调试Gem5</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 8, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          4 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<h1 id="调试gem5">调试Gem5</h1>
+<p><strong>作者:</strong>  Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>在之前的章节里，我们介绍了怎样去创建一个简单的SimObject。在本章，我们将上面简单例子中的stdout替换成gem5的调试功能支持的方式。</p>
+<p>gem5通过debug flags提供printf风格的跟踪调试功能。这些flags允许每个组件拥有debug-print的语句，而不用同时使能它们。当运行gem5的时候，您可以从命令行里指定使能哪个flag。</p>
+<h2 id="使用debug-flags">使用debug flags</h2>
+<p>以第一个简单的simple.py脚本为例子，您可以使能DRAM 调试标记，然后能够获得类型下面的输出。注意这样会生成许多输出到控制台（大概有7MB）。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">build/X86/gem5.opt --debug-flags<span style="color:#f92672">=</span>DRAM configs/learning_gem5/part1/simple.py | head -n <span style="color:#ae81ff">50</span>
+</code></pre></div><pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jan  3 2017 16:03:38
+gem5 started Jan  3 2017 16:11:47
+gem5 executing on chinook, pid 19234
+command line: build/X86/gem5.opt --debug-flags=Exec configs/learning_gem5/part1/simple.py
+
+Global frequency set at 1000000000000 ticks per second
+      0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000
+warn: ClockedObject: More than one power state change request encountered within the same simulation tick
+Beginning simulation!
+info: Entering event queue @ 0.  Starting simulation...
+  77000: system.cpu T0 : @_start    : xor   rbp, rbp
+  77000: system.cpu T0 : @_start.0  :   XOR_R_R : xor   rbp, rbp, rbp : IntAlu :  D=0x0000000000000000
+ 132000: system.cpu T0 : @_start+3    : mov r9, rdx
+ 132000: system.cpu T0 : @_start+3.0  :   MOV_R_R : mov   r9, r9, rdx : IntAlu :  D=0x0000000000000000
+ 187000: system.cpu T0 : @_start+6    : pop rsi
+ 187000: system.cpu T0 : @_start+6.0  :   POP_R : ld   t1, SS:[rsp] : MemRead :  D=0x0000000000000001 A=0x7fffffffee30
+ 250000: system.cpu T0 : @_start+6.1  :   POP_R : addi   rsp, rsp, 0x8 : IntAlu :  D=0x00007fffffffee38
+ 250000: system.cpu T0 : @_start+6.2  :   POP_R : mov   rsi, rsi, t1 : IntAlu :  D=0x0000000000000001
+ 360000: system.cpu T0 : @_start+7    : mov rdx, rsp
+ 360000: system.cpu T0 : @_start+7.0  :   MOV_R_R : mov   rdx, rdx, rsp : IntAlu :  D=0x00007fffffffee38
+ 415000: system.cpu T0 : @_start+10    : and    rax, 0xfffffffffffffff0
+ 415000: system.cpu T0 : @_start+10.0  :   AND_R_I : limm   t1, 0xfffffffffffffff0 : IntAlu :  D=0xfffffffffffffff0
+ 415000: system.cpu T0 : @_start+10.1  :   AND_R_I : and   rsp, rsp, t1 : IntAlu :  D=0x0000000000000000
+ 470000: system.cpu T0 : @_start+14    : push   rax
+ 470000: system.cpu T0 : @_start+14.0  :   PUSH_R : st   rax, SS:[rsp + 0xfffffffffffffff8] : MemWrite :  D=0x0000000000000000 A=0x7fffffffee28
+ 491000: system.cpu T0 : @_start+14.1  :   PUSH_R : subi   rsp, rsp, 0x8 : IntAlu :  D=0x00007fffffffee28
+ 546000: system.cpu T0 : @_start+15    : push   rsp
+ 546000: system.cpu T0 : @_start+15.0  :   PUSH_R : st   rsp, SS:[rsp + 0xfffffffffffffff8] : MemWrite :  D=0x00007fffffffee28 A=0x7fffffffee20
+ 567000: system.cpu T0 : @_start+15.1  :   PUSH_R : subi   rsp, rsp, 0x8 : IntAlu :  D=0x00007fffffffee20
+ 622000: system.cpu T0 : @_start+16    : mov    r15, 0x40a060
+ 622000: system.cpu T0 : @_start+16.0  :   MOV_R_I : limm   r8, 0x40a060 : IntAlu :  D=0x000000000040a060
+ 732000: system.cpu T0 : @_start+23    : mov    rdi, 0x409ff0
+ 732000: system.cpu T0 : @_start+23.0  :   MOV_R_I : limm   rcx, 0x409ff0 : IntAlu :  D=0x0000000000409ff0
+ 842000: system.cpu T0 : @_start+30    : mov    rdi, 0x400274
+ 842000: system.cpu T0 : @_start+30.0  :   MOV_R_I : limm   rdi, 0x400274 : IntAlu :  D=0x0000000000400274
+ 952000: system.cpu T0 : @_start+37    : call   0x9846
+ 952000: system.cpu T0 : @_start+37.0  :   CALL_NEAR_I : limm   t1, 0x9846 : IntAlu :  D=0x0000000000009846
+ 952000: system.cpu T0 : @_start+37.1  :   CALL_NEAR_I : rdip   t7, %ctrl153,  : IntAlu :  D=0x00000000004001ba
+ 952000: system.cpu T0 : @_start+37.2  :   CALL_NEAR_I : st   t7, SS:[rsp + 0xfffffffffffffff8] : MemWrite :  D=0x00000000004001ba A=0x7fffffffee18
+ 973000: system.cpu T0 : @_start+37.3  :   CALL_NEAR_I : subi   rsp, rsp, 0x8 : IntAlu :  D=0x00007fffffffee18
+ 973000: system.cpu T0 : @_start+37.4  :   CALL_NEAR_I : wrip   , t7, t1 : IntAlu :
+1042000: system.cpu T0 : @__libc_start_main    : push   r15
+1042000: system.cpu T0 : @__libc_start_main.0  :   PUSH_R : st   r15, SS:[rsp + 0xfffffffffffffff8] : MemWrite :  D=0x0000000000000000 A=0x7fffffffee10
+1063000: system.cpu T0 : @__libc_start_main.1  :   PUSH_R : subi   rsp, rsp, 0x8 : IntAlu :  D=0x00007fffffffee10
+1118000: system.cpu T0 : @__libc_start_main+2    : movsxd   rax, rsi
+1118000: system.cpu T0 : @__libc_start_main+2.0  :   MOVSXD_R_R : sexti   rax, rsi, 0x1f : IntAlu :  D=0x0000000000000001
+1173000: system.cpu T0 : @__libc_start_main+5    : mov  r15, r9
+1173000: system.cpu T0 : @__libc_start_main+5.0  :   MOV_R_R : mov   r15, r15, r9 : IntAlu :  D=0x0000000000000000
+1228000: system.cpu T0 : @__libc_start_main+8    : push r14
+</code></pre><p>实际上，这个Exec flag输出多个调试标记的集合。您可以通过使用&ndash;debug-help参数去运行gem5来查看所有的debug flag。</p>
+<pre><code>build/X86/gem5.opt --debug-help
+</code></pre><pre><code>Base Flags:
+Activity: None
+AddrRanges: None
+Annotate: State machine annotation debugging
+AnnotateQ: State machine annotation queue debugging
+AnnotateVerbose: Dump all state machine annotation details
+BaseXBar: None
+Branch: None
+Bridge: None
+CCRegs: None
+CMOS: Accesses to CMOS devices
+Cache: None
+CachePort: None
+CacheRepl: None
+CacheTags: None
+CacheVerbose: None
+Checker: None
+Checkpoint: None
+ClockDomain: None
+...
+Compound Flags:
+AnnotateAll: All Annotation flags
+    Annotate, AnnotateQ, AnnotateVerbose
+CacheAll: None
+    Cache, CachePort, CacheRepl, CacheVerbose, HWPrefetch
+DiskImageAll: None
+    DiskImageRead, DiskImageWrite
+...
+XBar: None
+    BaseXBar, CoherentXBar, NoncoherentXBar, SnoopFilter    XBar: None
+    BaseXBar, CoherentXBar, NoncoherentXBar, SnoopFilter
+</code></pre><h2 id="增加一个新的debug-flag">增加一个新的debug flag</h2>
+<p>在之前的章节里，我们使用了一个简单的std::cout去实现在SimObject打印信息。虽然可以使用通常用的C/C++ IO输出函数，但是不建议这么做。所以我们现在即将替换掉这种做法，而使用gem5的调试设施来替代。</p>
+<p>当创建一个新的调试符号，我们必须先在SConscript文件里声明它。在您HelloObject代码所在的目录（src/learning_gem5）里，增加下面的内容到SConscript文件。</p>
+<pre><code>DebugFlag('Hello')
+</code></pre><p>通过上面这样声明debug flag “Hello”。现在，我们能开始在SimObject里使用调试语句。</p>
+<p>通过在SConscript声明flag后，会有一个调试头文件自动生成，这样能允许我们在代码里去使用debug flag。这个头文件在debug目录下，并且名字和我们在SConscript文件里声明的一样。因此，我们需要在希望使用这个调试标记的文件里包含这个自动生成的头文件。</p>
+<p>在hello_object.cc文件里，我们需要包含头文件如下：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#75715e">#include</span> <span style="color:#75715e">&#34;debug/Hello.hh&#34;</span><span style="color:#75715e">
+</span></code></pre></div><p>现在我们包含了必要的头文件，让我们开始替换掉std::out，使用下面的调试语句：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++">DPRINTF(Hello, <span style="color:#e6db74">&#34;Created the hello object</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</code></pre></div><p>DPRINTF是个C++宏。这个宏的第一个参数是之前在SConscript文件里声明的Hello标记。剩下的参数可以和printf语句类似的输出方式。</p>
+<p>现在，您可以重新编译gem5并且使用“Hello”调试标记运行它，您会获得类型下面的输出。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"> build/X86/gem5.opt --debug-flags<span style="color:#f92672">=</span>Hello configs/learning_gem5/part2/run_hello.py
+</code></pre></div><pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jan  4 2017 09:40:10
+gem5 started Jan  4 2017 09:41:01
+gem5 executing on chinook, pid 29078
+command line: build/X86/gem5.opt --debug-flags=Hello configs/learning_gem5/part2/run_hello.py
+
+Global frequency set at 1000000000000 ticks per second
+      0: hello: Created the hello object
+Beginning simulation!
+info: Entering event queue @ 0.  Starting simulation...
+Exiting @ tick 18446744073709551615 because simulate() limit reached
+</code></pre><p>您能从<a href="http://www.gem5.org/_pages/static/scripts/part2/debugging/SConscript">这里</a>发现更新后的SConscript和<a href="http://www.gem5.org/_pages/static/scripts/part2/debugging/hello_object.cc">这里</a>更新后的hello对象代码。</p>
+<h2 id="调试的输出">调试的输出</h2>
+<p>对于每一个动态的DPRINTF语句，三个部分会打印到stdout。第一个，当前DPRINTF语句执行时的tick。第二个，调用DPRINF的SimObject的名字。这个名字通常和Python配置文件里定义的名字一样。尽管，在C++里是调用SimObject的name()方法返回的值。最后一个，您还可以看到传递到DPRINTF函数里格式化的字符串输出。</p>
+<p>您能够控制&ndash;debug-file参数让调试信息向哪输出。通常，所有的调试输出都会被打印到stdout。尽管如此，您还能重定向输出到任意文件。该文件被存储在相对于gem5主要输出目录，而不是当前的工作目录。</p>
+<h2 id="使用dprintf之外的其他调试函数">使用DPRINTF之外的其他调试函数</h2>
+<p>DPRINTF是在gem5里用的最常见的调试函数。但是，gem5还提供许多其他在特定环境里有用的调试函数。</p>
+<p>这些函数类似:cppDUMP,:cppDPRINTF,和:cppDPRINTFR，它们不带flag作为参数。因此，这些语句将总是打印出来，如果debug打开的话。</p>
+<p>这些函数仅当在“opt”或者“debug”模式编译gem5时使能。所有的其他模式这些函数都变成空的占位符，因此，您如果想使用这些调试函数，您必须使用gem5.opt或者gem5.debug。</p>
+
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

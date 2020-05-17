@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>使用默认的配置脚本 // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="使用默认的配置脚本"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+使用默认的配置脚本 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在本章，我们将探索使用gem5代码库自带的默认配置脚本。gem5带有许多配置脚本，这能够让您很快地使用gem5。但是，一个普遍的困难没有完全理解正在模拟什么就使用这些脚本。使用gem5进行计算机系统结构研究一个很重要的地方就是完全理解正在模拟的系统。本章将和您一块过一遍默认配置脚本里使用的重要选项。
+在过去的几章中，您已经创建了自己的配置脚本。这个很有用，因为它让您自己操作涉及到的每一个系统参数。然而，一些系统很复杂去搭建（例如，一个完整系统的ARM或者x86机器）。幸运的是，gem5开发者已经提供了很多能够构建并启动系统的脚本。
+目录概览 所有的gem5提供的配置文件可以在configs/目录下找到。目录结构如下：
+configs/boot: ammp.rcS halt.sh micro_tlblat2.rcS netperf-stream-udp-local.rcS ... configs/common: Benchmarks.py cpu2000.py Options.py Caches.py FSConfig.py O3_ARM_v7a.py SysPaths.py CacheConfig.py CpuConfig.py MemConfig.py Simulation.py configs/dram: sweep.py configs/example: fs.py read_config.py ruby_mem_test.py ruby_random_test.py memtest.py ruby_direct_test.py ruby_network_test.py se.py configs/ruby: MESI_Three_Level.py MI_example.py MOESI_CMP_token.py Network_test.py MESI_Two_Level.py MOESI_CMP_directory.py MOESI_hammer.py Ruby.py configs/splash2: cluster.py run.py configs/topologies: BaseTopology.py Cluster.py Crossbar.py MeshDirCorners.py Mesh.py Pt2Pt.py Torus.py 每个目录简单描述如下：
+boot/ 这些是在full-system模式下用到的rcS文件。这些文件在模拟器Linux系统启动后由shell执行。这些文件大部分用来在full-system模式下控制benchmark。一些是工具函数，例如hack_back_ckpt.rcS。这些文件将在full-system仿真时进行更多地介绍。
+common/ 这个目录包含一系列在创建仿真系统时有用的脚本和函数。例如，Cache.py和我们在之前章节里介绍的caches.py和caches_opts.py文件很像。
+Options.py包含一系列能用命令行进行设置的选项。例如，CPU的数量、系统时钟等等。当您想通过命令行更改参数更改选项时，这是很好的参考地方。
+CacheConfig.py包含了设置经典内存模型的cache参数的选项和函数。
+MemConfig.py提供了一些有用的用来进行内存系统设置的帮助函数。
+FSConfig.py包含了用来设置各种不同系统的full-system仿真的必要的函数。有专门的章节来介绍full-system仿真。"/>
+
+    <meta property="og:title" content="使用默认的配置脚本" />
+<meta property="og:description" content="&#43;&#43;&#43;
+使用默认的配置脚本 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在本章，我们将探索使用gem5代码库自带的默认配置脚本。gem5带有许多配置脚本，这能够让您很快地使用gem5。但是，一个普遍的困难没有完全理解正在模拟什么就使用这些脚本。使用gem5进行计算机系统结构研究一个很重要的地方就是完全理解正在模拟的系统。本章将和您一块过一遍默认配置脚本里使用的重要选项。
+在过去的几章中，您已经创建了自己的配置脚本。这个很有用，因为它让您自己操作涉及到的每一个系统参数。然而，一些系统很复杂去搭建（例如，一个完整系统的ARM或者x86机器）。幸运的是，gem5开发者已经提供了很多能够构建并启动系统的脚本。
+目录概览 所有的gem5提供的配置文件可以在configs/目录下找到。目录结构如下：
+configs/boot: ammp.rcS halt.sh micro_tlblat2.rcS netperf-stream-udp-local.rcS ... configs/common: Benchmarks.py cpu2000.py Options.py Caches.py FSConfig.py O3_ARM_v7a.py SysPaths.py CacheConfig.py CpuConfig.py MemConfig.py Simulation.py configs/dram: sweep.py configs/example: fs.py read_config.py ruby_mem_test.py ruby_random_test.py memtest.py ruby_direct_test.py ruby_network_test.py se.py configs/ruby: MESI_Three_Level.py MI_example.py MOESI_CMP_token.py Network_test.py MESI_Two_Level.py MOESI_CMP_directory.py MOESI_hammer.py Ruby.py configs/splash2: cluster.py run.py configs/topologies: BaseTopology.py Cluster.py Crossbar.py MeshDirCorners.py Mesh.py Pt2Pt.py Torus.py 每个目录简单描述如下：
+boot/ 这些是在full-system模式下用到的rcS文件。这些文件在模拟器Linux系统启动后由shell执行。这些文件大部分用来在full-system模式下控制benchmark。一些是工具函数，例如hack_back_ckpt.rcS。这些文件将在full-system仿真时进行更多地介绍。
+common/ 这个目录包含一系列在创建仿真系统时有用的脚本和函数。例如，Cache.py和我们在之前章节里介绍的caches.py和caches_opts.py文件很像。
+Options.py包含一系列能用命令行进行设置的选项。例如，CPU的数量、系统时钟等等。当您想通过命令行更改参数更改选项时，这是很好的参考地方。
+CacheConfig.py包含了设置经典内存模型的cache参数的选项和函数。
+MemConfig.py提供了一些有用的用来进行内存系统设置的帮助函数。
+FSConfig.py包含了用来设置各种不同系统的full-system仿真的必要的函数。有专门的章节来介绍full-system仿真。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/05using-default-config-script/" />
+<meta property="article:published_time" content="2020-05-06T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-06T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">使用默认的配置脚本</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 6, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          3 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<h1 id="使用默认的配置脚本">使用默认的配置脚本</h1>
+<p><strong>作者:</strong>  Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>在本章，我们将探索使用gem5代码库自带的默认配置脚本。gem5带有许多配置脚本，这能够让您很快地使用gem5。但是，一个普遍的困难没有完全理解正在模拟什么就使用这些脚本。使用gem5进行计算机系统结构研究一个很重要的地方就是完全理解正在模拟的系统。本章将和您一块过一遍默认配置脚本里使用的重要选项。</p>
+<p>在过去的几章中，您已经创建了自己的配置脚本。这个很有用，因为它让您自己操作涉及到的每一个系统参数。然而，一些系统很复杂去搭建（例如，一个完整系统的ARM或者x86机器）。幸运的是，gem5开发者已经提供了很多能够构建并启动系统的脚本。</p>
+<h2 id="目录概览">目录概览</h2>
+<p>所有的gem5提供的配置文件可以在configs/目录下找到。目录结构如下：</p>
+<pre><code>configs/boot:
+ammp.rcS            halt.sh                micro_tlblat2.rcS              netperf-stream-udp-local.rcS
+...
+
+configs/common:
+Benchmarks.py     cpu2000.py     Options.py
+Caches.py         FSConfig.py    O3_ARM_v7a.py     SysPaths.py
+CacheConfig.py    CpuConfig.py   MemConfig.py      Simulation.py
+
+configs/dram:
+sweep.py
+
+configs/example:
+fs.py       read_config.py       ruby_mem_test.py      ruby_random_test.py
+memtest.py  ruby_direct_test.py  ruby_network_test.py  se.py
+
+configs/ruby:
+MESI_Three_Level.py  MI_example.py           MOESI_CMP_token.py  Network_test.py
+MESI_Two_Level.py    MOESI_CMP_directory.py  MOESI_hammer.py     Ruby.py
+
+configs/splash2:
+cluster.py  run.py
+
+configs/topologies:
+BaseTopology.py  Cluster.py  Crossbar.py  MeshDirCorners.py  Mesh.py  Pt2Pt.py  Torus.py
+</code></pre><p>每个目录简单描述如下：</p>
+<h4 id="boot">boot/</h4>
+<p>这些是在full-system模式下用到的rcS文件。这些文件在模拟器Linux系统启动后由shell执行。这些文件大部分用来在full-system模式下控制benchmark。一些是工具函数，例如hack_back_ckpt.rcS。这些文件将在full-system仿真时进行更多地介绍。</p>
+<h4 id="common">common/</h4>
+<p>这个目录包含一系列在创建仿真系统时有用的脚本和函数。例如，Cache.py和我们在之前章节里介绍的caches.py和caches_opts.py文件很像。</p>
+<p>Options.py包含一系列能用命令行进行设置的选项。例如，CPU的数量、系统时钟等等。当您想通过命令行更改参数更改选项时，这是很好的参考地方。</p>
+<p>CacheConfig.py包含了设置经典内存模型的cache参数的选项和函数。</p>
+<p>MemConfig.py提供了一些有用的用来进行内存系统设置的帮助函数。</p>
+<p>FSConfig.py包含了用来设置各种不同系统的full-system仿真的必要的函数。有专门的章节来介绍full-system仿真。</p>
+<p>Simulation.py包含了很多用来搭建和运行gem5帮助函数。这个文件的许多代码管理保存和加载checkpoint。在example/目录下的配置示意配置文件使用了本文件的函数运行gem5。这个文件相当复杂，但是它能给运行仿真带来灵活的便利。</p>
+<h4 id="dram">dram</h4>
+<p>包含测试DRAM的脚本。</p>
+<h4 id="example">example</h4>
+<p>这个目录包含一些用来开箱即用的gem5配置文件。特别是，se.py和fs.py是相当有用。更多的文件将在后面介绍。这个目录同样有一些工具配置脚本。</p>
+<h4 id="ruby">ruby</h4>
+<p>这个目录包含了Ruby配置的脚本，和cache一致性协议。更多细节可以在Ruby这一章查到。</p>
+<h4 id="splash2">splash2/</h4>
+<p>这个目录包含了运行splash2 benchmark套件的脚本和一些配置仿真系统的选项。</p>
+<h4 id="topologies">topologies/</h4>
+<p>这个目录包含了当我们使用Ruby cache 一致性时的拓扑实现。更多细节可以在Ruby这一章查到。</p>
+<h2 id="使用sepy和fspy">使用se.py和fs.py</h2>
+<p>在本节，我们将讨论使用命令行传递到se.py和fs.py的通用选项。怎样运行full-system仿真更多的细节在full-system仿真这一章有详细介绍。这里我们讨论这两个文件使用的通用选项。</p>
+<p>本节讨论的选项可以在Options.py这个文件中找到，它们是在addCommonOptions函数中进行注册的。这一节不讨论这些选项的细节。带&ndash;help参数运行配置脚本可以查看所有选项，或者通过阅读脚本源代码。</p>
+<p>首先，让我们不使用任何参数简单运行hello world程序。</p>
+<pre><code>build/X86/gem5.opt configs/example/se.py --cmd=tests/test-progs/hello/bin/x86/linux/hello
+</code></pre><p>我们获得如下的输出：</p>
+<pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jan 14 2015 16:11:34
+gem5 started Feb  2 2015 15:22:24
+gem5 executing on mustardseed.cs.wisc.edu
+command line: build/X86/gem5.opt configs/example/se.py --cmd=tests/test-progs/hello/bin/x86/linux/hello
+Global frequency set at 1000000000000 ticks per second
+warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (512 Mbytes)
+0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000
+**** REAL SIMULATION ****
+info: Entering event queue @ 0.  Starting simulation...
+Hello world!
+Exiting @ tick 5942000 because target called exit()
+</code></pre><p>尽管，这不是一个很有意思的仿真。gem5默认使用atomic CPU和atomic内存访问，所以没有实时的时间报告数据，您可以在m5out/config.ini确认这个，CPU相关参数在第46行：</p>
+<pre><code>[system.cpu]
+type=AtomicSimpleCPU
+children=apic_clk_domain dtb interrupts isa itb tracer workload
+branchPred=Null
+checker=Null
+clk_domain=system.cpu_clk_domain
+cpu_id=0
+do_checkpoint_insts=true
+do_quiesce=true
+do_statistics_insts=true
+</code></pre><p>为了实际在timing模式下运行gem5，让我们指定一个CPU类型，我们同样可以指定L1cache的大小。</p>
+<pre><code>build/X86/gem5.opt configs/example/se.py --cmd=tests/test-progs/hello/bin/x86/linux/hello --cpu-type=TimingSimpleCPU --l1d_size=64kB --l1i_size=16kB
+</code></pre><pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jan 14 2015 16:11:34
+gem5 started Feb  2 2015 15:26:57
+gem5 executing on mustardseed.cs.wisc.edu
+command line: build/X86/gem5.opt configs/example/se.py --cmd=tests/test-progs/hello/bin/x86/linux/hello --cpu-type=TimingSimpleCPU --l1d_size=64kB --l1i_size=16kB
+Global frequency set at 1000000000000 ticks per second
+warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (512 Mbytes)
+0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000
+**** REAL SIMULATION ****
+info: Entering event queue @ 0.  Starting simulation...
+Hello world!
+Exiting @ tick 344986500 because target called exit()
+</code></pre><p>现在，让我们检查config.ini文件，确保这些选项在最终的系统上生效。如果您用“cache”搜索m5out/config.ini。您可以发现没有cache被创建，即使我们指定了cache的大小。我们没有指定系统使用cache，所以它不会被创建。正确的命令行应该如下：</p>
+<pre><code>build/X86/gem5.opt configs/example/se.py --cmd=tests/test-progs/hello/bin/x86/linux/hello --cpu-type=TimingSimpleCPU --l1d_size=64kB --l1i_size=16kB --caches
+</code></pre><pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jan 14 2015 16:11:34
+gem5 started Feb  2 2015 15:29:20
+gem5 executing on mustardseed.cs.wisc.edu
+command line: build/X86/gem5.opt configs/example/se.py --cmd=tests/test-progs/hello/bin/x86/linux/hello --cpu-type=TimingSimpleCPU --l1d_size=64kB --l1i_size=16kB --caches
+Global frequency set at 1000000000000 ticks per second
+warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (512 Mbytes)
+0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000
+**** REAL SIMULATION ****
+info: Entering event queue @ 0.  Starting simulation...
+Hello world!
+Exiting @ tick 29480500 because target called exit()
+</code></pre><p>在最后一行，我们看到总的仿真时间从344986500到29480500，运行时间更快，似乎cache现在可能已经使能。但是，最好还是在config.ini文件里再次确认下比较好。</p>
+<pre><code>[system.cpu.dcache]
+type=BaseCache
+children=tags
+addr_ranges=0:18446744073709551615
+assoc=2
+clk_domain=system.cpu_clk_domain
+demand_mshr_reserve=1
+eventq_index=0
+forward_snoops=true
+hit_latency=2
+is_top_level=true
+max_miss_count=0
+mshrs=4
+prefetch_on_access=false
+prefetcher=Null
+response_latency=2
+sequential_access=false
+size=65536
+system=system
+tags=system.cpu.dcache.tags
+tgts_per_mshr=20
+two_queue=false
+write_buffers=8
+cpu_side=system.cpu.dcache_port
+mem_side=system.membus.slave[2]
+</code></pre><h2 id="sepy和fspy的一些通用选项">se.py和fs.py的一些通用选项</h2>
+<p>当您运行下面命令时，所有可能的选项都会被打印出来：</p>
+<pre><code>build/X86/gem5.opt configs/example/se.py --help
+</code></pre><p>下面是这个列表中比较重要的几个选项。</p>
+
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

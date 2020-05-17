@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>创建一个简单的配置脚本 // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="创建一个简单的配置脚本"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+创建一个简单的配置脚本 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+概览的本章内容将过一遍怎样搭建一个简单的gem5仿真脚本，并且首次运行gem5。首先假定您已经根据本概览的第一章成功构建gem5二进制文件在build/X86/gem5.opt。
+本章我们的脚本将模拟一个简单的系统。该系统有一个CPU核。该CPU核将连接到系统范围的内存总线上。该系统有一个DDR3的单通道也连接到该内存总线上。
+gem5配置脚本 gem5二进制程序使用一个参数，该参数指定一个用来搭建和执行仿真程序python脚本。在这个脚本里，你能创建仿真系统，包含系统的各种部件和为每个系统部件指定参数。然后，在脚本里可以开始执行仿真。
+这个脚本完全是用户进行定义的，您能够在脚本里面使用任何有效的Python代码。本书提供的例子里使用了大量Python类和继承的语法。作为gem5的用户，您可以决定配置脚本到底有多简单或者复杂。
+在Gem5源码的configs/examples里有大量的配置脚本的例子。大部分允许用户能够通过命令行去指定配置项。在开始使用这些复杂的脚本之前，本书使用了更为简单的例子，这些例子足够简单，但也能够运行gem5。希望您读完本节后，能够对仿真脚本是怎样工作的有个很好的理解。
+关于SimObjects的额外说明 gem5是基于在SimObject之上的模块化设计。大部分被仿真的系统组件都是SimObject：CPU、Cache、内存控制器、总线等等。gem5从C&#43;&#43;的实现导出到python，因此从python的配置脚本您就能够创建任何SimObject，并能够设置他的参数和指定这些SimObject之间的相互交互。可以访问http://www.gem5.org/SimObjects获取更多信息。
+创建一个配置文件 让我们开始创建一个新配置文件并打开它：
+mkdir configs/tutorial touch configs/tutorial/simple.py 这是一个普通的python文件，会在gem5可执行文件中内嵌的python环境执行。因此，您能使用任何python特性和库。
+在这个文件的第一件事情是import m5的库和我们编译的所有SimObject。
+import m5 from m5.objects import * 接下来，我们将创建第一个SimObject：我们将用来仿真的系统。在我们的仿真系统里，System SimObject将作为所有其他SimObject的父对象。System对象包含了许多函数（不仅在时序方面）信息，例如物理内存的范围，根始终域，根电压域，内核（在full-system simulation）等。为了创建System SimObject，我们只需简单地用python类例化语句。
+system = System() 现在我们已经有一个对我们将要仿真的系统的参考对象，让我们开始驱动这个系统。我们首先需要创建一个时钟域，然后我们在该时钟域上设置时钟频率。在SimObject里面设置参数完全和在python对象设置成员一样，所以，比如我们可以简单的将时钟设置为1G Hz。最后，我们必须为这个时钟域指定一个电压域。因为目前我们不关心系统的功耗，我们只为这个电压域使用默认参数。
+system.clk_domain = SrcClockDomain() system.clk_domain.clock = &#39;1GHz&#39; system.clk_domain.voltage_domain = VoltageDomain() 一旦我们创建一个系统，让我们搭建内存将怎样被模拟。我们将使用timing模式进行内存仿真。您必须总是使用timing模式，除了特殊的像fast-forwarding和从checkpoint恢复这些情况。我们将设置一个单一的512MB的内存范围，一个小系统。记住在python配置脚本里，您可以用常见的方式和单位指定内存的大小（如，‘512MB’），同样类似，对于时间您可以使用时间单位（如，‘5ns’）。这些将自动会被转化成响应的内部表示。
+system.mem_mode = &#39;timing&#39; system.mem_ranges = [AddrRange(&#39;512MB&#39;)] 现在，我们能创建一个CPU。我们将开始以gem5中的最简单timing-based CPU（TimingSimpleCPU）为例。这个CPU模型在一个时钟周期内执行一条命令，除了那些需要访问内存的请求，这些请求将经过内存系统。为了创建CPU，您可以简单实用下面的对象例化语句。
+system.cpu = TimingSimpleCPU() 接下来，我们将创建一个系统范围内的内存总线：
+system.membus = SystemXBar() 现在我们有了一个内存总线，让我们开始连接CPU的cache端口到内存总线上。在这个例子，因为我们将仿真的系统没有cache，我们将直接连接I-cache和D-cache端口到内存总线。在这个例子里，我们没有cache。
+system.cpu.icache_port = system.membus.slave system.cpu.dcache_port = system."/>
+
+    <meta property="og:title" content="创建一个简单的配置脚本" />
+<meta property="og:description" content="&#43;&#43;&#43;
+创建一个简单的配置脚本 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+概览的本章内容将过一遍怎样搭建一个简单的gem5仿真脚本，并且首次运行gem5。首先假定您已经根据本概览的第一章成功构建gem5二进制文件在build/X86/gem5.opt。
+本章我们的脚本将模拟一个简单的系统。该系统有一个CPU核。该CPU核将连接到系统范围的内存总线上。该系统有一个DDR3的单通道也连接到该内存总线上。
+gem5配置脚本 gem5二进制程序使用一个参数，该参数指定一个用来搭建和执行仿真程序python脚本。在这个脚本里，你能创建仿真系统，包含系统的各种部件和为每个系统部件指定参数。然后，在脚本里可以开始执行仿真。
+这个脚本完全是用户进行定义的，您能够在脚本里面使用任何有效的Python代码。本书提供的例子里使用了大量Python类和继承的语法。作为gem5的用户，您可以决定配置脚本到底有多简单或者复杂。
+在Gem5源码的configs/examples里有大量的配置脚本的例子。大部分允许用户能够通过命令行去指定配置项。在开始使用这些复杂的脚本之前，本书使用了更为简单的例子，这些例子足够简单，但也能够运行gem5。希望您读完本节后，能够对仿真脚本是怎样工作的有个很好的理解。
+关于SimObjects的额外说明 gem5是基于在SimObject之上的模块化设计。大部分被仿真的系统组件都是SimObject：CPU、Cache、内存控制器、总线等等。gem5从C&#43;&#43;的实现导出到python，因此从python的配置脚本您就能够创建任何SimObject，并能够设置他的参数和指定这些SimObject之间的相互交互。可以访问http://www.gem5.org/SimObjects获取更多信息。
+创建一个配置文件 让我们开始创建一个新配置文件并打开它：
+mkdir configs/tutorial touch configs/tutorial/simple.py 这是一个普通的python文件，会在gem5可执行文件中内嵌的python环境执行。因此，您能使用任何python特性和库。
+在这个文件的第一件事情是import m5的库和我们编译的所有SimObject。
+import m5 from m5.objects import * 接下来，我们将创建第一个SimObject：我们将用来仿真的系统。在我们的仿真系统里，System SimObject将作为所有其他SimObject的父对象。System对象包含了许多函数（不仅在时序方面）信息，例如物理内存的范围，根始终域，根电压域，内核（在full-system simulation）等。为了创建System SimObject，我们只需简单地用python类例化语句。
+system = System() 现在我们已经有一个对我们将要仿真的系统的参考对象，让我们开始驱动这个系统。我们首先需要创建一个时钟域，然后我们在该时钟域上设置时钟频率。在SimObject里面设置参数完全和在python对象设置成员一样，所以，比如我们可以简单的将时钟设置为1G Hz。最后，我们必须为这个时钟域指定一个电压域。因为目前我们不关心系统的功耗，我们只为这个电压域使用默认参数。
+system.clk_domain = SrcClockDomain() system.clk_domain.clock = &#39;1GHz&#39; system.clk_domain.voltage_domain = VoltageDomain() 一旦我们创建一个系统，让我们搭建内存将怎样被模拟。我们将使用timing模式进行内存仿真。您必须总是使用timing模式，除了特殊的像fast-forwarding和从checkpoint恢复这些情况。我们将设置一个单一的512MB的内存范围，一个小系统。记住在python配置脚本里，您可以用常见的方式和单位指定内存的大小（如，‘512MB’），同样类似，对于时间您可以使用时间单位（如，‘5ns’）。这些将自动会被转化成响应的内部表示。
+system.mem_mode = &#39;timing&#39; system.mem_ranges = [AddrRange(&#39;512MB&#39;)] 现在，我们能创建一个CPU。我们将开始以gem5中的最简单timing-based CPU（TimingSimpleCPU）为例。这个CPU模型在一个时钟周期内执行一条命令，除了那些需要访问内存的请求，这些请求将经过内存系统。为了创建CPU，您可以简单实用下面的对象例化语句。
+system.cpu = TimingSimpleCPU() 接下来，我们将创建一个系统范围内的内存总线：
+system.membus = SystemXBar() 现在我们有了一个内存总线，让我们开始连接CPU的cache端口到内存总线上。在这个例子，因为我们将仿真的系统没有cache，我们将直接连接I-cache和D-cache端口到内存总线。在这个例子里，我们没有cache。
+system.cpu.icache_port = system.membus.slave system.cpu.dcache_port = system." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/02creating-simple-script/" />
+<meta property="article:published_time" content="2020-05-03T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-03T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">创建一个简单的配置脚本</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 3, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          2 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<h1 id="创建一个简单的配置脚本">创建一个简单的配置脚本</h1>
+<p><strong>作者:</strong>  Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>概览的本章内容将过一遍怎样搭建一个简单的gem5仿真脚本，并且首次运行gem5。首先假定您已经根据本概览的第一章成功构建gem5二进制文件在build/X86/gem5.opt。</p>
+<p>本章我们的脚本将模拟一个简单的系统。该系统有一个CPU核。该CPU核将连接到系统范围的内存总线上。该系统有一个DDR3的单通道也连接到该内存总线上。</p>
+<h2 id="gem5配置脚本">gem5配置脚本</h2>
+<p>gem5二进制程序使用一个参数，该参数指定一个用来搭建和执行仿真程序python脚本。在这个脚本里，你能创建仿真系统，包含系统的各种部件和为每个系统部件指定参数。然后，在脚本里可以开始执行仿真。</p>
+<p>这个脚本完全是用户进行定义的，您能够在脚本里面使用任何有效的Python代码。本书提供的例子里使用了大量Python类和继承的语法。作为gem5的用户，您可以决定配置脚本到底有多简单或者复杂。</p>
+<p>在Gem5源码的configs/examples里有大量的配置脚本的例子。大部分允许用户能够通过命令行去指定配置项。在开始使用这些复杂的脚本之前，本书使用了更为简单的例子，这些例子足够简单，但也能够运行gem5。希望您读完本节后，能够对仿真脚本是怎样工作的有个很好的理解。</p>
+<h4 id="关于simobjects的额外说明">关于SimObjects的额外说明</h4>
+<p>gem5是基于在SimObject之上的模块化设计。大部分被仿真的系统组件都是SimObject：CPU、Cache、内存控制器、总线等等。gem5从C++的实现导出到python，因此从python的配置脚本您就能够创建任何SimObject，并能够设置他的参数和指定这些SimObject之间的相互交互。可以访问<a href="http://www.gem5.org/SimObjects"> http://www.gem5.org/SimObjects</a>获取更多信息。</p>
+<h2 id="创建一个配置文件">创建一个配置文件</h2>
+<p>让我们开始创建一个新配置文件并打开它：</p>
+<pre><code>mkdir configs/tutorial
+touch configs/tutorial/simple.py
+</code></pre><p>这是一个普通的python文件，会在gem5可执行文件中内嵌的python环境执行。因此，您能使用任何python特性和库。</p>
+<p>在这个文件的第一件事情是import m5的库和我们编译的所有SimObject。</p>
+<pre><code>import m5
+from m5.objects import *
+</code></pre><p>接下来，我们将创建第一个SimObject：我们将用来仿真的系统。在我们的仿真系统里，System SimObject将作为所有其他SimObject的父对象。System对象包含了许多函数（不仅在时序方面）信息，例如物理内存的范围，根始终域，根电压域，内核（在full-system simulation）等。为了创建System SimObject，我们只需简单地用python类例化语句。</p>
+<pre><code>system = System()
+</code></pre><p>现在我们已经有一个对我们将要仿真的系统的参考对象，让我们开始驱动这个系统。我们首先需要创建一个时钟域，然后我们在该时钟域上设置时钟频率。在SimObject里面设置参数完全和在python对象设置成员一样，所以，比如我们可以简单的将时钟设置为1G Hz。最后，我们必须为这个时钟域指定一个电压域。因为目前我们不关心系统的功耗，我们只为这个电压域使用默认参数。</p>
+<pre><code>system.clk_domain = SrcClockDomain()
+system.clk_domain.clock = '1GHz'
+system.clk_domain.voltage_domain = VoltageDomain()
+</code></pre><p>一旦我们创建一个系统，让我们搭建内存将怎样被模拟。我们将使用timing模式进行内存仿真。您必须总是使用timing模式，除了特殊的像fast-forwarding和从checkpoint恢复这些情况。我们将设置一个单一的512MB的内存范围，一个小系统。记住在python配置脚本里，您可以用常见的方式和单位指定内存的大小（如，‘512MB’），同样类似，对于时间您可以使用时间单位（如，‘5ns’）。这些将自动会被转化成响应的内部表示。</p>
+<pre><code>system.mem_mode = 'timing'
+system.mem_ranges = [AddrRange('512MB')]
+</code></pre><p>现在，我们能创建一个CPU。我们将开始以gem5中的最简单timing-based CPU（TimingSimpleCPU）为例。这个CPU模型在一个时钟周期内执行一条命令，除了那些需要访问内存的请求，这些请求将经过内存系统。为了创建CPU，您可以简单实用下面的对象例化语句。</p>
+<pre><code>system.cpu = TimingSimpleCPU()
+</code></pre><p>接下来，我们将创建一个系统范围内的内存总线：</p>
+<pre><code>system.membus = SystemXBar()
+</code></pre><p>现在我们有了一个内存总线，让我们开始连接CPU的cache端口到内存总线上。在这个例子，因为我们将仿真的系统没有cache，我们将直接连接I-cache和D-cache端口到内存总线。在这个例子里，我们没有cache。</p>
+<pre><code>system.cpu.icache_port = system.membus.slave
+system.cpu.dcache_port = system.membus.slave
+</code></pre><h4 id="gem5-port更多介绍">gem5 port更多介绍</h4>
+<p>为了将更多的内存组件连接在一起，gem5使用了port抽象，每一个内存对象可以有两种类型的port，master port和slave port。请求总是从master port到slave port，响应总是从slave port到master port。当连接这些port，您必须将master port 连接到 slave port上。</p>
+<p>在python配置脚本连接port比较简单。您可以简单设置master port = 某slave port，他们就被连在一块。例如，</p>
+<pre><code>memobject1.master = memobject2.slave
+</code></pre><p>master port和slave port可以在等号的任何一边，效果都是一样。在进行连接之后，master 可以发送请求到 slave。在这连接背后有有很多魔法，但细节对大多用户来说不重要。</p>
+<p>在下一章，我们将讨论port和MemObject的更多细节。</p>
+<p>接下来，我们需要连接一些其他port，确保整个系统功能上连接正确。我们将在CPU上创建IO控制器，将它连接到内存总线。同样，我们需要连接一个特殊的port到内存总线，这个port是个功能性的port，允许系统去读写内存。</p>
+<p>连接PIO和中断port到内存总线是x86特定的需求。其他ISA（如，ARM）不需要这额外3行。</p>
+<pre><code>system.cpu.createInterruptController()
+system.cpu.interrupts[0].pio = system.membus.master
+system.cpu.interrupts[0].int_master = system.membus.slave
+system.cpu.interrupts[0].int_slave = system.membus.master
+
+system.system_port = system.membus.slave
+</code></pre><p>接下来，我们需要创建一个内存控制器并连接到内存总线。对于这个系统，我们使用简单的DDR3控制器，它将负责和整个系统内存范围的仿真。</p>
+<pre><code>system.mem_ctrl = DDR3_1600_8x8()
+system.mem_ctrl.range = system.mem_ranges[0]
+system.mem_ctrl.port = system.membus.master
+</code></pre><p>进行最后的连接之后，我们完成了例化仿真系统。我们的系统看上去像下图所示：</p>
+<p><strong>simple-config-fig</strong></p>
+<p>接下来，我们需要搭建CPU即将执行的进程。因为我们将在syscall emulation模式下执行仿真，我们仅指出编译好的可执行文件。我们将执行一个简单的“hello world”程序。您可以指定任何可以在x86上构建的用户程序，并且它被静态链接。</p>
+<h4 id="full-systemfs-对比-syscall-emulationse">full system（FS） 对比 syscall emulation（SE）</h4>
+<p>gem5能够运行在两种不同的模式，叫做“syscall emulation”和“full system”或者叫SE和FS模式。在full system模式（在full system这一部分介绍），gem5模拟整个完整的硬件系统和运行未修改的内核。full system模式和运行一个虚拟机十分类似。</p>
+<p>另一方面syscall emulation模式不模拟系统所有的设备，关注在模拟CPU和内存部分。syscall emulation相对更容易配置，因为您不需要例化像真实世界系统里一样的硬件设备。尽管如此，syscall emulation仅模拟linux系统调用，所以这个模式仅模拟应用在用户模式代码的表现。</p>
+<p>首先，我们要创建了一个进程（一个SimObject）。然后我们要设置我们要在上面运行的命令。这个和argv很像，第一个参数是可执行程序的名字，剩下的是该程序的参数。然后我们设置CPU使用这个进程作为它的负载，最后在CPU创建一个功能性的执行上下文。</p>
+<pre><code>process = Process()
+process.cmd = ['tests/test-progs/hello/bin/x86/linux/hello']
+system.cpu.workload = process
+system.cpu.createThreads()
+</code></pre><p>最后一件事，我们需要例化system和开始执行。首先，我们创建Root对象。然后我们例化仿真，这个例化进程所有的我们在python创建SimObject和相应的C++对象。</p>
+<p>注意，你不需要先例化python类之后再显示指定成员变量。您可以通过命名参数传递对应的参数值，像Root对象一样。</p>
+<pre><code>root = Root(full_system = False, system = system)
+m5.instantiate()
+</code></pre><p>最后，我们可以开始真正的仿真，现在gem5使用python 3风格的打印函数，所以print不再是个python语句而是作为函数调用。</p>
+<pre><code>print(&quot;Beginning simulation!&quot;)
+exit_event = m5.simulate()
+</code></pre><p>一旦仿真结束，我们可以打印系统的状态。</p>
+<pre><code>print('Exiting @ tick {} because {}'
+      .format(m5.curTick(), exit_event.getCause()))
+</code></pre><h2 id="运行gem5">运行gem5</h2>
+<p>现在我们已经创建了一个简单仿真脚本（完整的脚本可以在gem5/configs/learning_gem5/part1/simple.py找到），我们即将运行gem5。gem5可以带很多参数，但是这个脚本只需要一个参数，所以，我们可以在gem5根目录上像下面这样简单运行gem5。</p>
+<pre><code>build/X86/gem5.opt configs/tutorial/simple.py
+</code></pre><p>输出如下：</p>
+<pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Mar 16 2018 10:24:24
+gem5 started Mar 16 2018 15:53:27
+gem5 executing on amarillo, pid 41697
+command line: build/X86/gem5.opt configs/tutorial/simple.py
+
+Global frequency set at 1000000000000 ticks per second
+warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (512 Mbytes)
+0: system.remote_gdb: listening for remote gdb on port 7000
+Beginning simulation!
+info: Entering event queue @ 0.  Starting simulation...
+Hello world!
+Exiting @ tick 507841000 because exiting with last active thread context
+</code></pre>
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>

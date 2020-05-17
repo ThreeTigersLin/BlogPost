@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <title>在内存系统创建一个SimObject // hello friends.</title>
+    <meta charset="utf-8" />
+    <meta name="generator" content="Hugo 0.67.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="lin" />
+    <meta name="description" content="" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+
+    
+    <meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="在内存系统创建一个SimObject"/>
+<meta name="twitter:description" content="&#43;&#43;&#43;
+在内存系统创建一个SimObject 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在本章中，我们将创建一个简单的内存SimObject。该对象位于CPU和内存总线之间。在下一章，我们将在这个简单的内存SimObject之上增加一些逻辑去实现一个简单的阻塞型单处理器cache。
+gem5 master port和slave port 在深入内存SimObject实现之前，我们需要先理解gem5的master port和slave port接口。就像之前在简单配置这一章讨论的一样，所有的内存SimObject都是通过port连接在一起。这些port提供了内存对象之间的严格的接口。
+这些port实现了3种不同的内存系统仿真模式：timing, atomic, functional。最重要的一种仿真模式是timing模式，该模式是唯一一个能产生和真实设备接近的正确仿真结果。其他模式只是在特定场景下使用。
+atomic模式是一个十分有用的在预热模拟器或者特定区域进行快进仿真。这个模式认为内存系统没有事件会产生。相应地，所有的内存访问请求在一个单一的长长的调用链里面完成。对于内存SimObject，atomic访问不是必须实现的，除非用来快进模拟或者模拟器预热。
+functional模式在debugging模式下发挥作用。functional模式用来在认为需要从host读取数据到模拟器内存的场景。在systemcall 仿真模式下经常使用，例如，functional模式被用来从host加载process.cmd二进制文件到仿真系统的内存里，这样仿真系统能够使用它们。funcitonal访问在读的时候需要返回最新(most up-to-date)的数据，而无论这些数据在哪；并且在写的时候更新所有的有效数据（例如，在一个有多个有效同一块地址的cache块系统里）。
+Packet 在gem5，Packet被用来在port之间发送数据。一个Packet由对应的内存请求访问MemReq对象构成。MemReq持有原始内存请求的信息，原始请求初始化该packet，包括地址和访问类型(读或者写等)。
+Packet也包含一个MemCmd，代表packet目前的命令。这个命令会在packet的生命周期内动态变化（例如，一旦内存命令满足的的话，请求转变成响应）。最常见的MemCmd是ReadReq，ReadResp，WriteReq，WriteResp。同样对于cache或者其他命令类型有写回请求(WritebackDirty, WritebackClean)。
+packet同样持有请求的数据或者数据的指针。当创建packet的时候有选项确定是否数据是动态的(需要明确地申请和释放)，或者是静态的(申请或者释放由packet对象进行)。
+最后，packet通常用来在经典cache模型中作为跟踪一致性的单元。因此，很多packet 代码和经典的cache一致性协议有关。尽管如此，packet能用来在所有的gem5 内存SimObject之间进行通信，即使它们和cache一致性没有直接关系(例如，DRAM控制器或者CPU模型)。
+所有的port接口函数接收一个packet指针作为参数，因为这个指针很常见，gem5定义了一个PacketPtr类型。
+port接口 在gem5有两种类型的port：master port和slave port。当您实现一个内存SimObject时，您将实现至少一个上面的port类型。您创建的port需要从MaterPort或者SlavePort继承。mater port总是发送请求（request，响应地接收响应(response)），相应地，slave port 总是接收请求(发送响应)。
+图master-slave-1概要展示了简单的timing模式下mater port和slave port之间的交互。其他模式master和slave之间使用简单地使用一个调用链实现。
+master-slave-1
+正如上面提到的，所有的port接口需要PacketPtr作为一个参数，每一个函数（sendTimingReq，recvTimingReq等）接收一个PacketPtr参数，这个packet用来请求或者响应的发送和接收。
+recvTimingReq返回一个bool类型的返回值。改布尔值在调用master的上下文返回，如果返回true表示该packet被slave接收。另一方面如果返回值是false，意味着slave目前没能力接收请求，该请求必须在后续的某个时间点重试。
+在master-slave-1-fig，首先，master通过调用sendingTimingReq发送一个timing request，对应的调用是recvTimingResp。在slave，从recvTimingResp返回时，sendingTimingReq返回。master继续执行，slave开始进行必要的操作去完成请求（例如，如果是cache，它需要查找tags看看是否有匹配返回）。
+一旦slave完成了请求后，它发送响应到master，slave带着响应packet（这个应该是和请求是同一个PacketPtr，但当时是一个响应请求）调用sendingTimingResp。另一边，master 调用函数recvTimingResp。该函数返回true。这样，一次请求响应的交互过程就完成了。
+后面在master-slave-example-section，我们将展示这些函数的例子。
+有可能master或者slave在收到请求或者响应的时候处于busy状态。图master-slave-2-fig展示了slave处于busy时，有一个原始请求发送给它。
+master-slave-2-fig
+在这种情况下，slave port所在的对象从recvTimingReq函数返回false。当一个master在调用sendTimingReq收到false后，它必须等待直到函数recvReqRetry被执行，当这个函数被调用时，master才被允许再次调用sendTimingRequest。上面的图展示了timing request遇到一次request失败的情况，但是有可能请求会多次发送失败（注意：master有责任跟踪这个packet的发送失败，而不是slave；在失败的情况下，slave不保存PacketPtr）。
+同样地，master-slave-3-fig展示了当slave尝试发送response时，master处于busy的情形。这种情况下，slave不能继续调用sendTimingResp直到它收到了一个recvRespRetry。
+master-slave-3-fig
+在这两种情况，有个场景很重要，retry的代码路径可能是在一个调用堆栈上。比如，当master调用sendRespRetry，recvTimingReq有可能在同一个堆栈被调用，因此，很容易创建一个无限递归的bug。所有，一个内存SimObject发送一个retry前，确保就绪接收另外一个packet很重要。
+简单内存SimObject例子 在本节，我们将构建一个简单的内存SimObject，它简单传递cpu侧（一个简单cpu模型）过来的请求到内存侧（一个简单内存总线），见下面的simple-memobj-figure图。它有一个master port能用来发送请求到内存总线，两个cpu侧的slave port一个是指令port一个是数据port。在下一章，我们将增加逻辑让这个内存SimObject成为一个cache。
+simple-memobj-figure
+声明一个SimObject 和我们在创建简单SimObject一章一样，我们首先创建一个SimObject Python文件。我们将这个SimObject命名为SimpleMemobj，并且创建在src/learning_gem5/simple_memobj这个SimObject python文件中。
+from m5.params import * from m5."/>
+
+    <meta property="og:title" content="在内存系统创建一个SimObject" />
+<meta property="og:description" content="&#43;&#43;&#43;
+在内存系统创建一个SimObject 作者: Jason Lowe-Power
+译者: 落木
+&#43;&#43;&#43;
+在本章中，我们将创建一个简单的内存SimObject。该对象位于CPU和内存总线之间。在下一章，我们将在这个简单的内存SimObject之上增加一些逻辑去实现一个简单的阻塞型单处理器cache。
+gem5 master port和slave port 在深入内存SimObject实现之前，我们需要先理解gem5的master port和slave port接口。就像之前在简单配置这一章讨论的一样，所有的内存SimObject都是通过port连接在一起。这些port提供了内存对象之间的严格的接口。
+这些port实现了3种不同的内存系统仿真模式：timing, atomic, functional。最重要的一种仿真模式是timing模式，该模式是唯一一个能产生和真实设备接近的正确仿真结果。其他模式只是在特定场景下使用。
+atomic模式是一个十分有用的在预热模拟器或者特定区域进行快进仿真。这个模式认为内存系统没有事件会产生。相应地，所有的内存访问请求在一个单一的长长的调用链里面完成。对于内存SimObject，atomic访问不是必须实现的，除非用来快进模拟或者模拟器预热。
+functional模式在debugging模式下发挥作用。functional模式用来在认为需要从host读取数据到模拟器内存的场景。在systemcall 仿真模式下经常使用，例如，functional模式被用来从host加载process.cmd二进制文件到仿真系统的内存里，这样仿真系统能够使用它们。funcitonal访问在读的时候需要返回最新(most up-to-date)的数据，而无论这些数据在哪；并且在写的时候更新所有的有效数据（例如，在一个有多个有效同一块地址的cache块系统里）。
+Packet 在gem5，Packet被用来在port之间发送数据。一个Packet由对应的内存请求访问MemReq对象构成。MemReq持有原始内存请求的信息，原始请求初始化该packet，包括地址和访问类型(读或者写等)。
+Packet也包含一个MemCmd，代表packet目前的命令。这个命令会在packet的生命周期内动态变化（例如，一旦内存命令满足的的话，请求转变成响应）。最常见的MemCmd是ReadReq，ReadResp，WriteReq，WriteResp。同样对于cache或者其他命令类型有写回请求(WritebackDirty, WritebackClean)。
+packet同样持有请求的数据或者数据的指针。当创建packet的时候有选项确定是否数据是动态的(需要明确地申请和释放)，或者是静态的(申请或者释放由packet对象进行)。
+最后，packet通常用来在经典cache模型中作为跟踪一致性的单元。因此，很多packet 代码和经典的cache一致性协议有关。尽管如此，packet能用来在所有的gem5 内存SimObject之间进行通信，即使它们和cache一致性没有直接关系(例如，DRAM控制器或者CPU模型)。
+所有的port接口函数接收一个packet指针作为参数，因为这个指针很常见，gem5定义了一个PacketPtr类型。
+port接口 在gem5有两种类型的port：master port和slave port。当您实现一个内存SimObject时，您将实现至少一个上面的port类型。您创建的port需要从MaterPort或者SlavePort继承。mater port总是发送请求（request，响应地接收响应(response)），相应地，slave port 总是接收请求(发送响应)。
+图master-slave-1概要展示了简单的timing模式下mater port和slave port之间的交互。其他模式master和slave之间使用简单地使用一个调用链实现。
+master-slave-1
+正如上面提到的，所有的port接口需要PacketPtr作为一个参数，每一个函数（sendTimingReq，recvTimingReq等）接收一个PacketPtr参数，这个packet用来请求或者响应的发送和接收。
+recvTimingReq返回一个bool类型的返回值。改布尔值在调用master的上下文返回，如果返回true表示该packet被slave接收。另一方面如果返回值是false，意味着slave目前没能力接收请求，该请求必须在后续的某个时间点重试。
+在master-slave-1-fig，首先，master通过调用sendingTimingReq发送一个timing request，对应的调用是recvTimingResp。在slave，从recvTimingResp返回时，sendingTimingReq返回。master继续执行，slave开始进行必要的操作去完成请求（例如，如果是cache，它需要查找tags看看是否有匹配返回）。
+一旦slave完成了请求后，它发送响应到master，slave带着响应packet（这个应该是和请求是同一个PacketPtr，但当时是一个响应请求）调用sendingTimingResp。另一边，master 调用函数recvTimingResp。该函数返回true。这样，一次请求响应的交互过程就完成了。
+后面在master-slave-example-section，我们将展示这些函数的例子。
+有可能master或者slave在收到请求或者响应的时候处于busy状态。图master-slave-2-fig展示了slave处于busy时，有一个原始请求发送给它。
+master-slave-2-fig
+在这种情况下，slave port所在的对象从recvTimingReq函数返回false。当一个master在调用sendTimingReq收到false后，它必须等待直到函数recvReqRetry被执行，当这个函数被调用时，master才被允许再次调用sendTimingRequest。上面的图展示了timing request遇到一次request失败的情况，但是有可能请求会多次发送失败（注意：master有责任跟踪这个packet的发送失败，而不是slave；在失败的情况下，slave不保存PacketPtr）。
+同样地，master-slave-3-fig展示了当slave尝试发送response时，master处于busy的情形。这种情况下，slave不能继续调用sendTimingResp直到它收到了一个recvRespRetry。
+master-slave-3-fig
+在这两种情况，有个场景很重要，retry的代码路径可能是在一个调用堆栈上。比如，当master调用sendRespRetry，recvTimingReq有可能在同一个堆栈被调用，因此，很容易创建一个无限递归的bug。所有，一个内存SimObject发送一个retry前，确保就绪接收另外一个packet很重要。
+简单内存SimObject例子 在本节，我们将构建一个简单的内存SimObject，它简单传递cpu侧（一个简单cpu模型）过来的请求到内存侧（一个简单内存总线），见下面的simple-memobj-figure图。它有一个master port能用来发送请求到内存总线，两个cpu侧的slave port一个是指令port一个是数据port。在下一章，我们将增加逻辑让这个内存SimObject成为一个cache。
+simple-memobj-figure
+声明一个SimObject 和我们在创建简单SimObject一章一样，我们首先创建一个SimObject Python文件。我们将这个SimObject命名为SimpleMemobj，并且创建在src/learning_gem5/simple_memobj这个SimObject python文件中。
+from m5.params import * from m5." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://threetigerslin.github.io/post/16creating-simobject-in-mem-sys/" />
+<meta property="article:published_time" content="2020-05-11T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-05-11T00:00:00+00:00" />
+
+
+  </head>
+  <body>
+    <header class="app-header">
+      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <h1>hello friends.</h1>
+      <p>Tick Tock.</p>
+      <div class="app-header-social">
+        
+          <a target="_blank" href="https://threetigerslin.github.io/BlogPost" rel="noreferrer noopener"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-github">
+  <title>github</title>
+  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+</svg></a>
+        
+      </div>
+    </header>
+    <main class="app-container">
+      
+  <article class="post">
+    <header class="post-header">
+      <h1 class ="post-title">在内存系统创建一个SimObject</h1>
+      <div class="post-meta">
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-calendar">
+  <title>calendar</title>
+  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+</svg>
+          May 11, 2020
+        </div>
+        <div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-clock">
+  <title>clock</title>
+  <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+</svg>
+          5 min read
+        </div></div>
+    </header>
+    <div class="post-content">
+      <p>+++</p>
+<h1 id="在内存系统创建一个simobject">在内存系统创建一个SimObject</h1>
+<p><strong>作者:</strong>  Jason Lowe-Power</p>
+<p><strong>译者:</strong> 落木</p>
+<p>+++</p>
+<p>在本章中，我们将创建一个简单的内存SimObject。该对象位于CPU和内存总线之间。在下一章，我们将在这个简单的内存SimObject之上增加一些逻辑去实现一个简单的阻塞型单处理器cache。</p>
+<h2 id="gem5-master-port和slave-port">gem5 master port和slave port</h2>
+<p>在深入内存SimObject实现之前，我们需要先理解gem5的master port和slave port接口。就像之前在简单配置这一章讨论的一样，所有的内存SimObject都是通过port连接在一起。这些port提供了内存对象之间的严格的接口。</p>
+<p>这些port实现了3种不同的内存系统仿真模式：timing, atomic, functional。最重要的一种仿真模式是timing模式，该模式是唯一一个能产生和真实设备接近的正确仿真结果。其他模式只是在特定场景下使用。</p>
+<p>atomic模式是一个十分有用的在预热模拟器或者特定区域进行快进仿真。这个模式认为内存系统没有事件会产生。相应地，所有的内存访问请求在一个单一的长长的调用链里面完成。对于内存SimObject，atomic访问不是必须实现的，除非用来快进模拟或者模拟器预热。</p>
+<p>functional模式在debugging模式下发挥作用。functional模式用来在认为需要从host读取数据到模拟器内存的场景。在systemcall 仿真模式下经常使用，例如，functional模式被用来从host加载process.cmd二进制文件到仿真系统的内存里，这样仿真系统能够使用它们。funcitonal访问在读的时候需要返回最新(most up-to-date)的数据，而无论这些数据在哪；并且在写的时候更新所有的有效数据（例如，在一个有多个有效同一块地址的cache块系统里）。</p>
+<h2 id="packet">Packet</h2>
+<p>在gem5，Packet被用来在port之间发送数据。一个Packet由对应的内存请求访问MemReq对象构成。MemReq持有原始内存请求的信息，原始请求初始化该packet，包括地址和访问类型(读或者写等)。</p>
+<p>Packet也包含一个MemCmd，代表packet<em>目前</em>的命令。这个命令会在packet的生命周期内动态变化（例如，一旦内存命令满足的的话，请求转变成响应）。最常见的MemCmd是ReadReq，ReadResp，WriteReq，WriteResp。同样对于cache或者其他命令类型有写回请求(WritebackDirty, WritebackClean)。</p>
+<p>packet同样持有请求的数据或者数据的指针。当创建packet的时候有选项确定是否数据是动态的(需要明确地申请和释放)，或者是静态的(申请或者释放由packet对象进行)。</p>
+<p>最后，packet通常用来在经典cache模型中作为跟踪一致性的单元。因此，很多packet 代码和经典的cache一致性协议有关。尽管如此，packet能用来在所有的gem5 内存SimObject之间进行通信，即使它们和cache一致性没有直接关系(例如，DRAM控制器或者CPU模型)。</p>
+<p>所有的port接口函数接收一个packet指针作为参数，因为这个指针很常见，gem5定义了一个PacketPtr类型。</p>
+<h2 id="port接口">port接口</h2>
+<p>在gem5有两种类型的port：master port和slave port。当您实现一个内存SimObject时，您将实现至少一个上面的port类型。您创建的port需要从MaterPort或者SlavePort继承。mater port总是发送请求（request，响应地接收响应(response)），相应地，slave port 总是接收请求(发送响应)。</p>
+<p>图master-slave-1概要展示了简单的timing模式下mater port和slave port之间的交互。其他模式master和slave之间使用简单地使用一个调用链实现。</p>
+<p><strong>master-slave-1</strong></p>
+<p>正如上面提到的，所有的port接口需要PacketPtr作为一个参数，每一个函数（sendTimingReq，recvTimingReq等）接收一个PacketPtr参数，这个packet用来请求或者响应的发送和接收。</p>
+<p>recvTimingReq返回一个bool类型的返回值。改布尔值在调用master的上下文返回，如果返回true表示该packet被slave接收。另一方面如果返回值是false，意味着slave目前没能力接收请求，该请求必须在后续的某个时间点重试。</p>
+<p>在master-slave-1-fig，首先，master通过调用sendingTimingReq发送一个timing request，对应的调用是recvTimingResp。在slave，从recvTimingResp返回时，sendingTimingReq返回。master继续执行，slave开始进行必要的操作去完成请求（例如，如果是cache，它需要查找tags看看是否有匹配返回）。</p>
+<p>一旦slave完成了请求后，它发送响应到master，slave带着响应packet（这个应该是和请求是同一个PacketPtr，但当时是一个响应请求）调用sendingTimingResp。另一边，master 调用函数recvTimingResp。该函数返回true。这样，一次请求响应的交互过程就完成了。</p>
+<p>后面在master-slave-example-section，我们将展示这些函数的例子。</p>
+<p>有可能master或者slave在收到请求或者响应的时候处于busy状态。图master-slave-2-fig展示了slave处于busy时，有一个原始请求发送给它。</p>
+<p><strong>master-slave-2-fig</strong></p>
+<p>在这种情况下，slave port所在的对象从recvTimingReq函数返回false。当一个master在调用sendTimingReq收到false后，它必须等待直到函数recvReqRetry被执行，当这个函数被调用时，master才被允许再次调用sendTimingRequest。上面的图展示了timing request遇到一次request失败的情况，但是有可能请求会多次发送失败（注意：master有责任跟踪这个packet的发送失败，而不是slave；在失败的情况下，slave不保存PacketPtr）。</p>
+<p>同样地，master-slave-3-fig展示了当slave尝试发送response时，master处于busy的情形。这种情况下，slave不能继续调用sendTimingResp直到它收到了一个recvRespRetry。</p>
+<p><strong>master-slave-3-fig</strong></p>
+<p>在这两种情况，有个场景很重要，retry的代码路径可能是在一个调用堆栈上。比如，当master调用sendRespRetry，recvTimingReq有可能在同一个堆栈被调用，因此，很容易创建一个无限递归的bug。所有，一个内存SimObject发送一个retry前，确保就绪接收另外一个packet很重要。</p>
+<h2 id="简单内存simobject例子">简单内存SimObject例子</h2>
+<p>在本节，我们将构建一个简单的内存SimObject，它简单传递cpu侧（一个简单cpu模型）过来的请求到内存侧（一个简单内存总线），见下面的simple-memobj-figure图。它有一个master port能用来发送请求到内存总线，两个cpu侧的slave port一个是指令port一个是数据port。在下一章，我们将增加逻辑让这个内存SimObject成为一个cache。</p>
+<p><strong>simple-memobj-figure</strong></p>
+<h3 id="声明一个simobject">声明一个SimObject</h3>
+<p>和我们在创建简单SimObject一章一样，我们首先创建一个SimObject Python文件。我们将这个SimObject命名为SimpleMemobj，并且创建在src/learning_gem5/simple_memobj这个SimObject python文件中。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">from</span> m5.params <span style="color:#f92672">import</span> <span style="color:#f92672">*</span>
+<span style="color:#f92672">from</span> m5.proxy <span style="color:#f92672">import</span> <span style="color:#f92672">*</span>
+<span style="color:#f92672">from</span> MemObject <span style="color:#f92672">import</span> MemObject
+
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">SimpleMemobj</span>(MemObject):
+    type <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;SimpleMemobj&#39;</span>
+    cxx_header <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;learning_gem5/simple_memobj/simple_memobj.hh&#34;</span>
+
+    inst_port <span style="color:#f92672">=</span> SlavePort(<span style="color:#e6db74">&#34;CPU side port, receives requests&#34;</span>)
+    data_port <span style="color:#f92672">=</span> SlavePort(<span style="color:#e6db74">&#34;CPU side port, receives requests&#34;</span>)
+    mem_side <span style="color:#f92672">=</span> MasterPort(<span style="color:#e6db74">&#34;Memory side port, sends requests&#34;</span>)
+</code></pre></div><p>这个SimObject，我们从MemObject类继承，而不是从SimObject继承，因为我们创建的SimObject需要和内存系统交互。MemObject有两个纯虚函数需要我们在C++文件中实现，getMasterPort和getSlavePort</p>
+<p>这个对象的3个参数分别对应3个port。两个port是连接到CPU指令和数据port，另外一个连接到内存总线。这些port不包含默认值，仅有简单描述。</p>
+<p>记住这些port的名字很重要，我们将用这些名字在实现SimpleMemobj定义getMasterPort和getSlavePort的时候用到。</p>
+<p>您能在<a href="">这里</a>下载到这个SimObject文件。</p>
+<p>当然，您也需要创建一个SConscript文件在这个包含SimObject python文件的新目录下。您可以在[这里]下载这个SConscript文件。</p>
+<h3 id="定义这个simmemobject类">定义这个SimMemObject类</h3>
+<p>现在我们为SimpleMemobj创建一个头文件。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">SimpleMemobj</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> MemObject
+{
+  <span style="color:#66d9ef">private</span><span style="color:#f92672">:</span>
+
+  <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+
+    <span style="color:#75715e">/** constructor
+</span><span style="color:#75715e">     */</span>
+    SimpleMemobj(SimpleMemobjParams <span style="color:#f92672">*</span>params);
+};
+</code></pre></div><h3 id="定义一个slave-port类型">定义一个slave port类型</h3>
+<p>现在，我们需要定义我们两个类型的port的类：CPU-side和memory-side的port。我们将在SimpleMemobj类内部声明这些类，因为没有其他对象会使用这些类。</p>
+<p>让我们开始声明CPU-side的这两个slave port。这两个port将继承SlavePort类。下面是必要的用来重写SlavePort类的两个纯虚函数的代码：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">CPUSidePort</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> SlavePort
+{
+  <span style="color:#66d9ef">private</span><span style="color:#f92672">:</span>
+    SimpleMemobj <span style="color:#f92672">*</span>owner;
+
+  <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+    CPUSidePort(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> name, SimpleMemobj <span style="color:#f92672">*</span>owner) <span style="color:#f92672">:</span>
+        SlavePort(name, owner), owner(owner)
+    { }
+
+    AddrRangeList <span style="color:#a6e22e">getAddrRanges</span>() <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">override</span>;
+
+  <span style="color:#66d9ef">protected</span><span style="color:#f92672">:</span>
+    Tick recvAtomic(PacketPtr pkt) <span style="color:#66d9ef">override</span> { panic(<span style="color:#e6db74">&#34;recvAtomic unimpl.&#34;</span>); }
+    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">recvFunctional</span>(PacketPtr pkt) <span style="color:#66d9ef">override</span>;
+    <span style="color:#66d9ef">bool</span> <span style="color:#a6e22e">recvTimingReq</span>(PacketPtr pkt) <span style="color:#66d9ef">override</span>;
+    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">recvRespRetry</span>() <span style="color:#66d9ef">override</span>;
+};
+</code></pre></div><p>这个对象同时有一个成员变量，它的拥有者，以便它能调用其函数。</p>
+<p>这个对象同时有一个成员变量，它的拥有者，以便它能调用其函数。</p>
+<h3 id="定义一个master-port类型">定义一个Master Port类型</h3>
+<p>接下来，我们将定义一个master port。这个是memory-side的port用来将从CPU-side过来的请求转发到剩下的内存系统。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">MemSidePort</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> MasterPort
+{
+  <span style="color:#66d9ef">private</span><span style="color:#f92672">:</span>
+    SimpleMemobj <span style="color:#f92672">*</span>owner;
+
+  <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+    MemSidePort(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> name, SimpleMemobj <span style="color:#f92672">*</span>owner) <span style="color:#f92672">:</span>
+        MasterPort(name, owner), owner(owner)
+    { }
+
+  <span style="color:#66d9ef">protected</span><span style="color:#f92672">:</span>
+    <span style="color:#66d9ef">bool</span> recvTimingResp(PacketPtr pkt) <span style="color:#66d9ef">override</span>;
+    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">recvReqRetry</span>() <span style="color:#66d9ef">override</span>;
+    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">recvRangeChange</span>() <span style="color:#66d9ef">override</span>;
+};
+</code></pre></div><p>这个类仅有3个纯虚函数需要重写。</p>
+<h3 id="定义memobject接口">定义MemObject接口</h3>
+<p>现在我们已经定义了两个类型的CPUSidePort和MemSidePort。我们可以在SimpleMemObject里声明3个port。同时我们声明了两个从MemObject来的纯虚函数，getMasterPort和getSlavePort。这两个函数在gem5里经常是在使用port连接内存对象的初始化阶段使用。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">SimpleMemobj</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> MemObject
+{
+  <span style="color:#66d9ef">private</span><span style="color:#f92672">:</span>
+
+    <span style="color:#f92672">&lt;</span>CPUSidePort declaration<span style="color:#f92672">&gt;</span>
+    <span style="color:#f92672">&lt;</span>MemSidePort declaration<span style="color:#f92672">&gt;</span>
+
+    CPUSidePort instPort;
+    CPUSidePort dataPort;
+
+    MemSidePort memPort;
+
+  <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+    SimpleMemobj(SimpleMemobjParams <span style="color:#f92672">*</span>params);
+
+    BaseMasterPort<span style="color:#f92672">&amp;</span> getMasterPort(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> if_name,
+                                  PortID idx <span style="color:#f92672">=</span> InvalidPortID) <span style="color:#66d9ef">override</span>;
+
+    BaseSlavePort<span style="color:#f92672">&amp;</span> getSlavePort(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> if_name,
+                                PortID idx <span style="color:#f92672">=</span> InvalidPortID) <span style="color:#66d9ef">override</span>;
+
+};
+</code></pre></div><p>您可以在[这里]下载这个头文件。</p>
+<h3 id="实现基本的memobject函数">实现基本的MemObject函数</h3>
+<p>在SimpleMemobj构造函数里，我们将简单调用MemObject构造函数。我们也需要初始化所有的port。每一个port的构造函数有两个参数：名字和属主的指针。名字可以是任何字符串，但是为了方便，最好和python SimObject文件里使用的名字相同。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++">SimpleMemobj<span style="color:#f92672">::</span>SimpleMemobj(SimpleMemobjParams <span style="color:#f92672">*</span>params) <span style="color:#f92672">:</span>
+    MemObject(params),
+    instPort(params<span style="color:#f92672">-&gt;</span>name <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;.inst_port&#34;</span>, <span style="color:#66d9ef">this</span>),
+    dataPort(params<span style="color:#f92672">-&gt;</span>name <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;.data_port&#34;</span>, <span style="color:#66d9ef">this</span>),
+    memPort(params<span style="color:#f92672">-&gt;</span>name <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;.mem_side&#34;</span>, <span style="color:#66d9ef">this</span>)
+{
+}
+</code></pre></div><p>接下来，我们需要实现获取port的接口。这由两个函数getMasterPort和getSlavePort构成。这些函数有两个参数，if_name是python文件里为这个对象接口的变量名字。在这个例子中master port是mem_side侧，和我们在Python SimObject文件声明的MasterPort对应。</p>
+<p>为了实现getMasterPort，我们比较if_name看看它是否和我们在Python SimObject文件里声明的mem_side是否一致。如果是，我们将返回memPort对象。如果不是，我们将这个名字传递给父类。通常这种情况下，当我们尝试连接一个slave port到这个port时将产生一个错误，因为父类没有实现该port的定义。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++">BaseMasterPort<span style="color:#f92672">&amp;</span>
+SimpleMemobj<span style="color:#f92672">::</span>getMasterPort(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> if_name, PortID idx)
+{
+    <span style="color:#66d9ef">if</span> (if_name <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;mem_side&#34;</span>) {
+        <span style="color:#66d9ef">return</span> memPort;
+    } <span style="color:#66d9ef">else</span> {
+        <span style="color:#66d9ef">return</span> MemObject<span style="color:#f92672">::</span>getMasterPort(if_name, idx);
+    }
+}
+</code></pre></div><pre><code>
+</code></pre><p>为了实现getSlavePort，我们简单检查是否if_name匹配我们在Python SimObject文件里定义的slave port。如果名字是“inst_port”，我们返回insPort，如果名字是“data_port”，我们返回“data_port”。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++">BaseSlavePort<span style="color:#f92672">&amp;</span>
+SimpleMemobj<span style="color:#f92672">::</span>getSlavePort(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> if_name, PortID idx)
+{
+    <span style="color:#66d9ef">if</span> (if_name <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;inst_port&#34;</span>) {
+        <span style="color:#66d9ef">return</span> instPort;
+    } <span style="color:#66d9ef">else</span> <span style="color:#a6e22e">if</span> (if_name <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;data_port&#34;</span>) {
+        <span style="color:#66d9ef">return</span> dataPort;
+    } <span style="color:#66d9ef">else</span> {
+        <span style="color:#66d9ef">return</span> MemObject<span style="color:#f92672">::</span>getSlavePort(if_name, idx);
+    }
+}
+</code></pre></div><h3 id="实现slave-port和master-port函数">实现slave port和master port函数</h3>
+<p>slave port和master port实现相当简单，大部分每一个port成员函数只需要简单转发信息到主存储对象（SimpleMemobj）。</p>
+<p>以两个简单函数开始，getAddrRange和recvFunctional可以简单调用属主内存对象SimpleMemobj的函数。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++">AddrRangeList
+SimpleMemobj<span style="color:#f92672">::</span>CPUSidePort<span style="color:#f92672">::</span>getAddrRanges() <span style="color:#66d9ef">const</span>
+{
+    <span style="color:#66d9ef">return</span> owner<span style="color:#f92672">-&gt;</span>getAddrRanges();
+}
+
+<span style="color:#66d9ef">void</span>
+SimpleMemobj<span style="color:#f92672">::</span>CPUSidePort<span style="color:#f92672">::</span>recvFunctional(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">return</span> owner<span style="color:#f92672">-&gt;</span>handleFunctional(pkt);
+}
+</code></pre></div><p>SimpleMemobj这些函数的实现相当简单。这些实现仅传递请求到内存对象。同样我们这里可以使用DPRINTF去跟踪发生什么情况。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleMemobj<span style="color:#f92672">::</span>handleFunctional(PacketPtr pkt)
+{
+    memPort.sendFunctional(pkt);
+}
+
+AddrRangeList
+SimpleMemobj<span style="color:#f92672">::</span>getAddrRanges() <span style="color:#66d9ef">const</span>
+{
+    DPRINTF(SimpleMemobj, <span style="color:#e6db74">&#34;Sending new ranges</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+    <span style="color:#66d9ef">return</span> memPort.getAddrRanges();
+}
+</code></pre></div><p>同样地，对于MemSidePort，我们只需要实现recvRangeChange和通过SimpleMemobj转发请求到slave port</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleMemobj<span style="color:#f92672">::</span>MemSidePort<span style="color:#f92672">::</span>recvRangeChange()
+{
+    owner<span style="color:#f92672">-&gt;</span>sendRangeChange();
+}
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleMemobj<span style="color:#f92672">::</span>sendRangeChange()
+{
+    instPort.sendRangeChange();
+    dataPort.sendRangeChange();
+}
+</code></pre></div><h3 id="实现接收请求">实现接收请求</h3>
+<p>recvTimingReq的实现比较复杂。我们需要检查SimpleMemobj是否能够接收该请求。SimpleMemobj是一个简单的阻塞结构；我们在一个时刻只能允许处理一个请求。因此，如果我们收到一个请求的同时另外一个请求正在进行，SimpleMemobj将阻塞这个第二个请求。</p>
+<p>为了简化实现，CPUSidePort存储所有的流控信息。因此，我们需要增加额外的变量needRetry到CPUSidePort，它是个布尔变量决定当SimpleMemobj空闲的时候是否发送一个retry。然后，如果SimpleMemobj如果在一个请求上阻塞。设置需要在未来的某个时间点上发送retry。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">bool</span>
+SimpleMemobj<span style="color:#f92672">::</span>CPUSidePort<span style="color:#f92672">::</span>recvTimingReq(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>owner<span style="color:#f92672">-&gt;</span>handleRequest(pkt)) {
+        needRetry <span style="color:#f92672">=</span> true;
+        <span style="color:#66d9ef">return</span> false;
+    } <span style="color:#66d9ef">else</span> {
+        <span style="color:#66d9ef">return</span> true;
+    }
+}
+</code></pre></div><p>未来处理SimpleMemobj请求，我们先检查SimpleMemobj是否已经阻塞在等待另外一个请求的响应上。如果阻塞在上面，我们返回false，通知调用master port方目前不能够接收请求。</p>
+<p>另外，我们将该port标记为blocked，发送packet到memory port。我们可以定义一个在MemSidePort辅助函数去隐藏SimpleMemobj流控的细节。我们将任务memPort处理所有的流控，并且从handleRequest返回true，因为假定成功消费了该请求。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">bool</span>
+SimpleMemobj<span style="color:#f92672">::</span>handleRequest(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">if</span> (blocked) {
+        <span style="color:#66d9ef">return</span> false;
+    }
+    DPRINTF(SimpleMemobj, <span style="color:#e6db74">&#34;Got request for addr %#x</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, pkt<span style="color:#f92672">-&gt;</span>getAddr());
+    blocked <span style="color:#f92672">=</span> true;
+    memPort.sendPacket(pkt);
+    <span style="color:#66d9ef">return</span> true;
+}
+</code></pre></div><p>接下来，我们需要实现在MemSidePort的sendPacket函数。这个函数将处理它的对方的slave port不能接收请求情况下的流控。为此我们需要在MemSidePort增加一个成员去存储在阻塞情况下的packet。发送方有责任存储这个packet，当接收方不能接收这个请求或者响应的时候。</p>
+<p>这个sendPacket函数，简单地调用sendTimingReq。如果发送失败，这个对象会将packet在blockedPacket成员函数里进程存储以便后续可以发送这个packet（当它收到一个recvReqRetry）。这个函数同时包含一些预防性的代码确保没有bug，我们从不不正确地去覆盖blockedPacket变量。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleMemobj<span style="color:#f92672">::</span>MemSidePort<span style="color:#f92672">::</span>sendPacket(PacketPtr pkt)
+{
+    panic_if(blockedPacket <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nullptr</span>, <span style="color:#e6db74">&#34;Should never try to send if blocked!&#34;</span>);
+    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>sendTimingReq(pkt)) {
+        blockedPacket <span style="color:#f92672">=</span> pkt;
+    }
+}
+</code></pre></div><p>接下来，我们需要实现重新发送packet的代码。在这个函数里，我们尝试调用我们上面写的sendPacket重新发送packet。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleMemobj<span style="color:#f92672">::</span>MemSidePort<span style="color:#f92672">::</span>recvReqRetry()
+{
+    assert(blockedPacket <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nullptr</span>);
+
+    PacketPtr pkt <span style="color:#f92672">=</span> blockedPacket;
+    blockedPacket <span style="color:#f92672">=</span> <span style="color:#66d9ef">nullptr</span>;
+
+    sendPacket(pkt);
+}
+</code></pre></div><h3 id="实现接收响应">实现接收响应</h3>
+<p>响应代码路径和接收代码路径类似。当MemSidePort收到一个response，我们通过属主SimpleMemobj转发这个请求到对应的CPUSidePort：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">bool</span>
+SimpleMemobj<span style="color:#f92672">::</span>MemSidePort<span style="color:#f92672">::</span>recvTimingResp(PacketPtr pkt)
+{
+    <span style="color:#66d9ef">return</span> owner<span style="color:#f92672">-&gt;</span>handleResponse(pkt);
+}
+</code></pre></div><p>在这个SimpleMemobj，当对象阻塞在其他请求的时候，需要阻止接收响应。在发送packet回CPU侧之前，我们需要标记object不再阻塞。这个必须在调用sendTimingResp之前完成。否则，有可能进入一个无限循环，因为master port有一个调用堆栈接收响应的同时发送另外一个请求。</p>
+<p>在SimpleMemobj解除阻塞之前，我们检查是否有指令的或者数据的packet需要通过相应的port发送回去。最后，因为现在对象处于非阻塞状态，我们可能需要通知CPU侧的端口，它们能重发之前失败的请求。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">bool</span>
+SimpleMemobj<span style="color:#f92672">::</span>handleResponse(PacketPtr pkt)
+{
+    assert(blocked);
+    DPRINTF(SimpleMemobj, <span style="color:#e6db74">&#34;Got response for addr %#x</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, pkt<span style="color:#f92672">-&gt;</span>getAddr());
+
+    blocked <span style="color:#f92672">=</span> false;
+
+    <span style="color:#75715e">// Simply forward to the memory port
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span> (pkt<span style="color:#f92672">-&gt;</span>req<span style="color:#f92672">-&gt;</span>isInstFetch()) {
+        instPort.sendPacket(pkt);
+    } <span style="color:#66d9ef">else</span> {
+        dataPort.sendPacket(pkt);
+    }
+
+    instPort.trySendRetry();
+    dataPort.trySendRetry();
+
+    <span style="color:#66d9ef">return</span> true;
+}
+</code></pre></div><p>和我们在MemSidePort实现发送packet类似，我们可以在CPUSidePort实现类似的sendPacket函数发送响应到CPU侧。这个函数调用sendTimingResp，相应地，对端的recvTimingResp会被调用。如果这个调用失败，对应的port目前处于阻塞状态，我们存储这个packet等下再发送。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleMemobj<span style="color:#f92672">::</span>CPUSidePort<span style="color:#f92672">::</span>sendPacket(PacketPtr pkt)
+{
+    panic_if(blockedPacket <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nullptr</span>, <span style="color:#e6db74">&#34;Should never try to send if blocked!&#34;</span>);
+
+    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>sendTimingResp(pkt)) {
+        blockedPacket <span style="color:#f92672">=</span> pkt;
+    }
+}
+</code></pre></div><p>后续当我们接收到一个recvRespRetry的时候，可以将阻塞的packet再次发送。这个函数和上面的recvReqRetry一样，简单地尝试重新发送packet，该packet有可能会再次被阻塞。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleMemobj<span style="color:#f92672">::</span>CPUSidePort<span style="color:#f92672">::</span>recvRespRetry()
+{
+    assert(blockedPacket <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nullptr</span>);
+
+    PacketPtr pkt <span style="color:#f92672">=</span> blockedPacket;
+    blockedPacket <span style="color:#f92672">=</span> <span style="color:#66d9ef">nullptr</span>;
+
+    sendPacket(pkt);
+}
+</code></pre></div><p>最后，我们需要为CPUSidePort实现另外的trySendRetry。这个函数被SimpleMemobj调用，当SimpleMemobj被阻塞的时候。trySendRetry检查是否有在recvTimingReq里标记的需要重试的packet，当SimpleMemobj被阻塞在一个新请求的时候。然后，如果需要重试，这个函数调用sendRetryReq，对应调用对端master port recvReqRetry（这个例子是CPU）。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c++" data-lang="c++"><span style="color:#66d9ef">void</span>
+SimpleMemobj<span style="color:#f92672">::</span>CPUSidePort<span style="color:#f92672">::</span>trySendRetry()
+{
+    <span style="color:#66d9ef">if</span> (needRetry <span style="color:#f92672">&amp;&amp;</span> blockedPacket <span style="color:#f92672">==</span> <span style="color:#66d9ef">nullptr</span>) {
+        needRetry <span style="color:#f92672">=</span> false;
+        DPRINTF(SimpleMemobj, <span style="color:#e6db74">&#34;Sending retry req for %d</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, id);
+        sendRetryReq();
+    }
+}
+</code></pre></div><p>您可以在<a href="">这里</a>下载SimpleMemobj的实现。</p>
+<p>下面的memobj-api-figure图，展示了CPUSidePort，MemSidePort和SimpleMemobj之间的关系。这图展示了对端port之间的交互和SimpleMemobj的实现。每一个加粗的函数是必须实现的函数，不加粗的函数是对接对端port的port接口。颜色对API调用对象进行高亮（例如，接收请求或者更新地址范围）。</p>
+<p><strong>memobj-api-figure</strong></p>
+<p>对应本例子的简单内存SimObject，packet仅仅是从cpu转发到内存总线。但是通过修改handleRequest和handleResponse，我们可以创建新的很多特性的SimObject，例如下一章要介绍的cache。</p>
+<h2 id="创建一个配置文件">创建一个配置文件</h2>
+<p>上面我们已实现了简单内存SimObject。在下一章我们将基于这个框架增加一些cache的逻辑实现这个内存对象改造成一个cache。在此之前，让我们先看看python配置文件如何增加这个SimpleMemObj到系统里。</p>
+<p>这个配置文件基于之前的simple config这章。尽管如此，代替CPU直接连接到内存总线，我们将初始化一个SimpleMemobj并把它放在CPU和内存总线之间。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">import</span> m5
+<span style="color:#f92672">from</span> m5.objects <span style="color:#f92672">import</span> <span style="color:#f92672">*</span>
+
+system <span style="color:#f92672">=</span> System()
+system<span style="color:#f92672">.</span>clk_domain <span style="color:#f92672">=</span> SrcClockDomain()
+system<span style="color:#f92672">.</span>clk_domain<span style="color:#f92672">.</span>clock <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;1GHz&#39;</span>
+system<span style="color:#f92672">.</span>clk_domain<span style="color:#f92672">.</span>voltage_domain <span style="color:#f92672">=</span> VoltageDomain()
+system<span style="color:#f92672">.</span>mem_mode <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;timing&#39;</span>
+system<span style="color:#f92672">.</span>mem_ranges <span style="color:#f92672">=</span> [AddrRange(<span style="color:#e6db74">&#39;512MB&#39;</span>)]
+
+system<span style="color:#f92672">.</span>cpu <span style="color:#f92672">=</span> TimingSimpleCPU()
+
+system<span style="color:#f92672">.</span>memobj <span style="color:#f92672">=</span> SimpleMemobj()
+
+system<span style="color:#f92672">.</span>cpu<span style="color:#f92672">.</span>icache_port <span style="color:#f92672">=</span> system<span style="color:#f92672">.</span>memobj<span style="color:#f92672">.</span>inst_port
+system<span style="color:#f92672">.</span>cpu<span style="color:#f92672">.</span>dcache_port <span style="color:#f92672">=</span> system<span style="color:#f92672">.</span>memobj<span style="color:#f92672">.</span>data_port
+
+system<span style="color:#f92672">.</span>membus <span style="color:#f92672">=</span> SystemXBar()
+
+system<span style="color:#f92672">.</span>memobj<span style="color:#f92672">.</span>mem_side <span style="color:#f92672">=</span> system<span style="color:#f92672">.</span>membus<span style="color:#f92672">.</span>slave
+
+system<span style="color:#f92672">.</span>cpu<span style="color:#f92672">.</span>createInterruptController()
+system<span style="color:#f92672">.</span>cpu<span style="color:#f92672">.</span>interrupts[<span style="color:#ae81ff">0</span>]<span style="color:#f92672">.</span>pio <span style="color:#f92672">=</span> system<span style="color:#f92672">.</span>membus<span style="color:#f92672">.</span>master
+system<span style="color:#f92672">.</span>cpu<span style="color:#f92672">.</span>interrupts[<span style="color:#ae81ff">0</span>]<span style="color:#f92672">.</span>int_master <span style="color:#f92672">=</span> system<span style="color:#f92672">.</span>membus<span style="color:#f92672">.</span>slave
+system<span style="color:#f92672">.</span>cpu<span style="color:#f92672">.</span>interrupts[<span style="color:#ae81ff">0</span>]<span style="color:#f92672">.</span>int_slave <span style="color:#f92672">=</span> system<span style="color:#f92672">.</span>membus<span style="color:#f92672">.</span>master
+
+system<span style="color:#f92672">.</span>mem_ctrl <span style="color:#f92672">=</span> DDR3_1600_8x8()
+system<span style="color:#f92672">.</span>mem_ctrl<span style="color:#f92672">.</span>range <span style="color:#f92672">=</span> system<span style="color:#f92672">.</span>mem_ranges[<span style="color:#ae81ff">0</span>]
+system<span style="color:#f92672">.</span>mem_ctrl<span style="color:#f92672">.</span>port <span style="color:#f92672">=</span> system<span style="color:#f92672">.</span>membus<span style="color:#f92672">.</span>master
+
+system<span style="color:#f92672">.</span>system_port <span style="color:#f92672">=</span> system<span style="color:#f92672">.</span>membus<span style="color:#f92672">.</span>slave
+
+process <span style="color:#f92672">=</span> Process()
+process<span style="color:#f92672">.</span>cmd <span style="color:#f92672">=</span> [<span style="color:#e6db74">&#39;tests/test-progs/hello/bin/x86/linux/hello&#39;</span>]
+system<span style="color:#f92672">.</span>cpu<span style="color:#f92672">.</span>workload <span style="color:#f92672">=</span> process
+system<span style="color:#f92672">.</span>cpu<span style="color:#f92672">.</span>createThreads()
+
+root <span style="color:#f92672">=</span> Root(full_system <span style="color:#f92672">=</span> False, system <span style="color:#f92672">=</span> system)
+m5<span style="color:#f92672">.</span>instantiate()
+
+<span style="color:#66d9ef">print</span> <span style="color:#e6db74">&#34;Beginning simulation!&#34;</span>
+exit_event <span style="color:#f92672">=</span> m5<span style="color:#f92672">.</span>simulate()
+<span style="color:#66d9ef">print</span> <span style="color:#e6db74">&#39;Exiting @ tick </span><span style="color:#e6db74">%i</span><span style="color:#e6db74"> because </span><span style="color:#e6db74">%s</span><span style="color:#e6db74">&#39;</span> <span style="color:#f92672">%</span> (m5<span style="color:#f92672">.</span>curTick(), exit_event<span style="color:#f92672">.</span>getCause())
+
+</code></pre></div><p>您可以在[这里]下载这个python文件。</p>
+<p>现在，当您运行这个配置文件，您可以获得类似下面的输出：</p>
+<pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jan  5 2017 13:40:18
+gem5 started Jan  9 2017 10:17:17
+gem5 executing on chinook, pid 5138
+command line: build/X86/gem5.opt configs/learning_gem5/part2/simple_memobj.py
+
+Global frequency set at 1000000000000 ticks per second
+warn: DRAM device capacity (8192 Mbytes) does not match the address range assigned (512 Mbytes)
+0: system.remote_gdb.listener: listening for remote gdb #0 on port 7000
+warn: CoherentXBar system.membus has no snooping ports attached!
+warn: ClockedObject: More than one power state change request encountered within the same simulation tick
+Beginning simulation!
+info: Entering event queue @ 0.  Starting simulation...
+Hello world!
+Exiting @ tick 507841000 because target called exit()
+</code></pre><p>如果您使用debug flag运行SimpleMemobj，您可以看到从CPU发出的和接收的所有的内存请求和响应。</p>
+<pre><code>gem5 Simulator System.  http://gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 compiled Jan  5 2017 13:40:18
+gem5 started Jan  9 2017 10:18:51
+gem5 executing on chinook, pid 5157
+command line: build/X86/gem5.opt --debug-flags=SimpleMemobj configs/learning_gem5/part2/simple_memobj.py
+
+Global frequency set at 1000000000000 ticks per second
+Beginning simulation!
+info: Entering event queue @ 0.  Starting simulation...
+      0: system.memobj: Got request for addr 0x190
+  77000: system.memobj: Got response for addr 0x190
+  77000: system.memobj: Got request for addr 0x190
+ 132000: system.memobj: Got response for addr 0x190
+ 132000: system.memobj: Got request for addr 0x190
+ 187000: system.memobj: Got response for addr 0x190
+ 187000: system.memobj: Got request for addr 0x94e30
+ 250000: system.memobj: Got response for addr 0x94e30
+ 250000: system.memobj: Got request for addr 0x190
+ ...
+</code></pre><p>您可能想将CPU模型更改成乱序模型（DerivO3CPU）。当使用乱序模型的CPU，您将看到不同的地址流，因为它允许一次有多个内存请求未完成。当使用乱序模型CPU，会产生很多stall，因为SimpleMemobj是阻塞型的。</p>
+
+    </div>
+    <div class="post-footer">
+      
+    </div>
+  </article>
+
+    </main>
+  </body>
+</html>
