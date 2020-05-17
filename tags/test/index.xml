@@ -2,21 +2,21 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>test on hello friends.</title>
-    <link>https://threetigerslin.github.io/tags/test/</link>
+    <link>https://threetigerslin.github.io/BlogPost/tags/test/</link>
     <description>Recent content in test on hello friends.</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Tue, 10 Mar 2020 16:20:53 +0800</lastBuildDate>
     
-	<atom:link href="https://threetigerslin.github.io/tags/test/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://threetigerslin.github.io/BlogPost/tags/test/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>Blog</title>
-      <link>https://threetigerslin.github.io/post/blog/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/blog/</link>
       <pubDate>Tue, 10 Mar 2020 16:20:53 +0800</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/blog/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/blog/</guid>
       <description>Hello github, this is just a test </description>
     </item>
     

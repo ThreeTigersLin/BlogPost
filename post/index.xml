@@ -2,21 +2,21 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Posts on hello friends.</title>
-    <link>https://threetigerslin.github.io/post/</link>
+    <link>https://threetigerslin.github.io/BlogPost/post/</link>
     <description>Recent content in Posts on hello friends.</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Tue, 12 May 2020 00:00:00 +0000</lastBuildDate>
     
-	<atom:link href="https://threetigerslin.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://threetigerslin.github.io/BlogPost/post/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>创建一个简单Cache对象</title>
-      <link>https://threetigerslin.github.io/post/17creating-simple-cache-object/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/17creating-simple-cache-object/</link>
       <pubDate>Tue, 12 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/17creating-simple-cache-object/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/17creating-simple-cache-object/</guid>
       <description>+++
 创建一个简单Cache对象 作者: Jason Lowe-Power
 译者: 落木
@@ -28,10 +28,10 @@ from m5.params import * from m5.proxy import * from MemObject import MemObject c
     
     <item>
       <title>在内存系统创建一个SimObject</title>
-      <link>https://threetigerslin.github.io/post/16creating-simobject-in-mem-sys/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/16creating-simobject-in-mem-sys/</link>
       <pubDate>Mon, 11 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/16creating-simobject-in-mem-sys/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/16creating-simobject-in-mem-sys/</guid>
       <description>+++
 在内存系统创建一个SimObject 作者: Jason Lowe-Power
 译者: 落木
@@ -68,10 +68,10 @@ from m5.params import * from m5.</description>
     
     <item>
       <title>增加参数到SimObject和更多事件处理</title>
-      <link>https://threetigerslin.github.io/post/15adding-param-to-simobject/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/15adding-param-to-simobject/</link>
       <pubDate>Sun, 10 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/15adding-param-to-simobject/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/15adding-param-to-simobject/</guid>
       <description>+++
 增加参数到SimObject和更多事件处理 作者: Jason Lowe-Power
 译者: 落木
@@ -91,10 +91,10 @@ class HelloObject : public SimObject { private: void processEvent(); EventWrappe
     
     <item>
       <title>事件驱动编程</title>
-      <link>https://threetigerslin.github.io/post/14event-driven-programming/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/14event-driven-programming/</link>
       <pubDate>Sat, 09 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/14event-driven-programming/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/14event-driven-programming/</guid>
       <description>+++
 事件驱动编程 作者: Jason Lowe-Power
 译者: 落木
@@ -115,10 +115,10 @@ void HelloObject::startup() { schedule(event, 100); } 这里，我们简单调�
     
     <item>
       <title>调试Gem5</title>
-      <link>https://threetigerslin.github.io/post/13debuging-gem5/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/13debuging-gem5/</link>
       <pubDate>Fri, 08 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/13debuging-gem5/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/13debuging-gem5/</guid>
       <description>+++
 调试Gem5 作者: Jason Lowe-Power
 译者: 落木
@@ -131,10 +131,10 @@ build/X86/gem5.opt --debug-flags=DRAM configs/learning_gem5/part1/simple.py | he
     
     <item>
       <title>创建一个简单的SimObject</title>
-      <link>https://threetigerslin.github.io/post/12creating-simple-simobject/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/12creating-simple-simobject/</link>
       <pubDate>Thu, 07 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/12creating-simple-simobject/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/12creating-simple-simobject/</guid>
       <description>+++
 创建一个简单的SimObject 作者: Jason Lowe-Power
 译者: 落木
@@ -160,10 +160,10 @@ SimObject包含了很多虚函数。尽管如此，这些虚函数没有一个�
     
     <item>
       <title>使用默认的配置脚本</title>
-      <link>https://threetigerslin.github.io/post/05using-default-config-script/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/05using-default-config-script/</link>
       <pubDate>Wed, 06 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/05using-default-config-script/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/05using-default-config-script/</guid>
       <description>+++
 使用默认的配置脚本 作者: Jason Lowe-Power
 译者: 落木
@@ -182,10 +182,10 @@ FSConfig.py包含了用来设置各种不同系统的full-system仿真的必要�
     
     <item>
       <title>搭建开发环境</title>
-      <link>https://threetigerslin.github.io/post/11setting-up-dev-env/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/11setting-up-dev-env/</link>
       <pubDate>Wed, 06 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/11setting-up-dev-env/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/11setting-up-dev-env/</guid>
       <description>+++
 搭建开发环境 作者: Jason Lowe-Power
 译者: 落木
@@ -199,10 +199,10 @@ gem5-风格 开发指导 当修改任何开源项目的时候，跟从项目的�
     
     <item>
       <title>理解gem5的输入和输出</title>
-      <link>https://threetigerslin.github.io/post/04understand-gem5-staticis-and-output/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/04understand-gem5-staticis-and-output/</link>
       <pubDate>Tue, 05 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/04understand-gem5-staticis-and-output/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/04understand-gem5-staticis-and-output/</guid>
       <description>+++
 理解gem5的输入和输出 作者: Jason Lowe-Power
 译者: 落木
@@ -218,10 +218,10 @@ config.ini 这个文件是被仿真系统的确切的配置。每一个SimObject
     
     <item>
       <title>增加Cache到配置脚本</title>
-      <link>https://threetigerslin.github.io/post/03adding-cache-to-config-script/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/03adding-cache-to-config-script/</link>
       <pubDate>Mon, 04 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/03adding-cache-to-config-script/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/03adding-cache-to-config-script/</guid>
       <description>+++
 增加Cache到配置脚本 作者: Jason Lowe-Power
 译者: 落木
@@ -243,10 +243,10 @@ class L1ICache(L1Cache): size = &#39;16kB&#39; class L1DCache(L1Cache): size = &
     
     <item>
       <title>创建一个简单的配置脚本</title>
-      <link>https://threetigerslin.github.io/post/02creating-simple-script/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/02creating-simple-script/</link>
       <pubDate>Sun, 03 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/02creating-simple-script/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/02creating-simple-script/</guid>
       <description>+++
 创建一个简单的配置脚本 作者: Jason Lowe-Power
 译者: 落木
@@ -271,10 +271,10 @@ system.cpu.icache_port = system.membus.slave system.cpu.dcache_port = system.</d
     
     <item>
       <title>构建 gem5</title>
-      <link>https://threetigerslin.github.io/post/01building-gem5/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/01building-gem5/</link>
       <pubDate>Sat, 02 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/01building-gem5/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/01building-gem5/</guid>
       <description>+++
 构建gem5 作者: Jason Lowe-Power
 译者: 落木
@@ -298,10 +298,10 @@ prof和perf 这两种模式的二进制类型用来获取gem5指标概要。prof
     
     <item>
       <title>介绍</title>
-      <link>https://threetigerslin.github.io/post/00introduction/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/00introduction/</link>
       <pubDate>Fri, 01 May 2020 00:00:00 +0000</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/00introduction/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/00introduction/</guid>
       <description>+++
 作者: Jason Lowe-Power
 译者: 落木
@@ -323,10 +323,10 @@ gem5是什么 gem5是模块化的通过离散事件驱动的计算机系统仿�
     
     <item>
       <title>Blog</title>
-      <link>https://threetigerslin.github.io/post/blog/</link>
+      <link>https://threetigerslin.github.io/BlogPost/post/blog/</link>
       <pubDate>Tue, 10 Mar 2020 16:20:53 +0800</pubDate>
       
-      <guid>https://threetigerslin.github.io/post/blog/</guid>
+      <guid>https://threetigerslin.github.io/BlogPost/post/blog/</guid>
       <description>Hello github, this is just a test </description>
     </item>
     

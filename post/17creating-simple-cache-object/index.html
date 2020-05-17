@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="author" content="lin" />
     <meta name="description" content="" />
-    <link rel="stylesheet" href="https://threetigerslin.github.io/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
+    <link rel="stylesheet" href="https://threetigerslin.github.io/BlogPost/css/main.min.61bb32028587f24ca28522d8d197970c7ef33284e5fffb45a75fcbbb2dbc4dcb.css" />
 
     
     <meta name="twitter:card" content="summary"/>
@@ -29,7 +29,7 @@ from m5.params import * from m5.proxy import * from MemObject import MemObject c
 SimpleCache SimObject 在创建SCon脚本之后，您可以在这里下载我们创建的SimObject python文件。我们将这个简单的内存对象命名为SimpleCache和在src/learning_gem5/simple_cache创建SimObject python文件。
 from m5.params import * from m5.proxy import * from MemObject import MemObject class SimpleCache(MemObject): type = &#39;SimpleCache&#39; cxx_header = &#34;learning_gem5/simple_cache/simple_cache.hh&#34; cpu_side = VectorSlavePort(&#34;CPU side port, receives requests&#34;) mem_side = MasterPort(&#34;Memory side port, sends requests&#34;) latency = Param.Cycles(1, &#34;Cycles taken on a hit or to resolve a miss&#34;) size = Param.MemorySize(&#39;16kB&#39;, &#34;The size of the cache&#34;) system = Param." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://threetigerslin.github.io/post/17creating-simple-cache-object/" />
+<meta property="og:url" content="https://threetigerslin.github.io/BlogPost/post/17creating-simple-cache-object/" />
 <meta property="article:published_time" content="2020-05-12T00:00:00+00:00" />
 <meta property="article:modified_time" content="2020-05-12T00:00:00+00:00" />
 
@@ -37,7 +37,7 @@ from m5.params import * from m5.proxy import * from MemObject import MemObject c
   </head>
   <body>
     <header class="app-header">
-      <a href="https://threetigerslin.github.io"><img class="app-header-avatar" src="/avatar.jpg" alt="lin" /></a>
+      <a href="https://threetigerslin.github.io/BlogPost/"><img class="app-header-avatar" src="/BlogPost/avatar.jpg" alt="lin" /></a>
       <h1>hello friends.</h1>
       <p>Tick Tock.</p>
       <div class="app-header-social">
